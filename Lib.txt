@@ -1,0 +1,1044 @@
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Data;
+using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Data.OleDb;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Collections.Specialized;
+using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Linq;
+
+namespace ideal
+{
+
+
+    public class Lib
+    {
+        #region Performans
+        public class PerformansMetrikleri
+        {
+            public dynamic Sistem;
+
+            public List<List<object>> DetayTablo;
+
+            //Toplam Puan Getirileri
+            public float PerformansPuan = 0;      //Yeni
+            public float PPProfitFactor = 0;    //Yeni
+            public float PPProfitFactorShort = 0;//Yeni
+            public float PPProfitFactorLong = 0;//Yeni
+            public float PPKazandiranToplam = 0;  //Yeni
+            public float PPKaybettirenToplam = 0; //Yeni
+            public float PPKazandiranToplamShort = 0;  //Yeni
+            public float PPKaybettirenToplamShort = 0; //Yeni
+            public float PPKazandiranToplamLong = 0;  //Yeni
+            public float PPKaybettirenToplamLong = 0; //Yeni
+            public float PPMaxDD = 0; //Yeni
+            public DateTime PPMaxDDBaslangicTarih;//Yeni
+            public DateTime PPMaxDDBitisTarih;//Yeni
+
+            public float ilkBakiyePuan = 0;
+            public float SonBakiyePuan = 0;
+            public float Puan = 0;
+            public float YuzdeGetiriPuan = 0;
+            public float ToplamKomisyon = 0;   //Yeni
+            public float ToplamKayma = 0;      //Yeni
+            public float ToplamKaymaKomisyon = 0; //Yeni
+            //İşlem Sayıları
+            public int ToplamIslemSayisi = 0;
+            public float AylikIslemOrtalamasi = 0; //Yeni
+            public float KarliIslemSayisiYuzde = 0;
+            public int KazandiranIslemSayisi = 0;
+            public int KaybettirenIslemSayisi = 0;
+            public float KazandiranToplam = 0;
+            public float KaybettirenToplam = 0;
+            public float KazandiranToplamShort = 0;
+            public float KaybettirenToplamShort = 0;
+            public float KazandiranToplamLong = 0;
+            public float KaybettirenToplamLong = 0;
+            public float NetKar = 0;
+            public float ProfitFactor = 0;
+            public float ProfitFactorShort = 0;//Yeni
+            public float ProfitFactorLong = 0;//Yeni
+            public float EnBuyukKar = 0;
+            public float EnBuyukZarar = 0;
+            public float ArdisikKarSayisi = 0;
+            public float ArdisikKarMiktari = 0;
+            public float ArdisikZararSayisi = 0;
+            public float ArdisikZararMiktari = 0;
+            public float AlimIslemiSayisi = 0;
+            public float AlimIslemiYuzdesi = 0;
+            public float SatimIslemiSayisi = 0;
+            public float SatimIslemiYuzdesi = 0;
+            public float MutluGun = 0;
+            public float MutsuzGun = 0;
+
+            public float MaxDD = 0;
+            public DateTime MaxDDBaslangicTarih;
+            public DateTime MaxDDBitisTarih;   //Yeni
+
+            public float SharpeRatio = 0;
+            public float SortinoRatio = 0;
+            public float YeniYuksekMaxGun = 0;
+            public DateTime YeniYuksekMaxGunTarih;
+
+            public DateTime IlkBarTarihi;//Yeni
+            public DateTime SonBarTarihi;//Yeni
+
+            public List<float> PuanList;
+            public List<float> PerformansPuanList;//Yeni
+            public List<float> KaymaList;//Yeni
+            public List<float> KomisyonList;//Yeni
+            public List<float> KaymaKomisyonList;//Yeni
+
+            public List<float> PPGunBasiList;//Yeni
+            public List<float> PPGunSonuList;//Yeni
+            public List<float> PPAyBasiList;//Yeni
+            public List<float> PPAySonuList;//Yeni
+            public List<float> PPAyNetList;//Yeni
+
+            public List<float> PuanGunBasiList;
+            public List<float> PuanGunSonuList;
+            public List<float> PuanAyBasiList;
+            public List<float> PuanAySonuList;
+            public List<float> PuanAyNetList;
+
+            public float GetiriAySure = 0;
+            public float GetiriAySureKZ = 0;
+            public float GetiriBugun = 0;
+            public float GetiriBuHafta = 0;
+            public float GetiriBuAy = 0;
+            public float GetiriBuYil = 0;
+            public float Getiri1Ay = 0;
+            public float Getiri2Ay = 0;
+            public float Getiri3Ay = 0;
+            public float Getiri6Ay = 0;
+            public float Getiri1Yil = 0;
+
+            public float GetiriAySureKZPP = 0;
+            public float GetiriBugunPP = 0;
+            public float GetiriBuHaftaPP = 0;
+            public float GetiriBuAyPP = 0;
+            public float GetiriBuYilPP = 0;
+            public float Getiri1AyPP = 0;
+            public float Getiri2AyPP = 0;
+            public float Getiri3AyPP = 0;
+            public float Getiri6AyPP = 0;
+            public float Getiri1YilPP = 0;
+
+            public Dictionary<DateTime, float> AyPuanOzetListe = new Dictionary<DateTime, float>();
+            public Dictionary<DateTime, float> AyPuanOzetListePP = new Dictionary<DateTime, float>();
+
+            public string PerformansPuanSonuc()
+            {
+                return "Performans Puanı: " + PerformansPuan.ToString("0.00")
+                       + Environment.NewLine + "(" + IlkBarTarihi.ToString("dd.MM.yyy") + "-" + SonBarTarihi.ToString("dd.MM.yyy") + ")";
+            }
+
+            public string PuanSonuc()
+            {
+                return "Puan: " + Puan.ToString("0.00")
+                       + Environment.NewLine + "(" + IlkBarTarihi.ToString("dd.MM.yyy") + "-" + SonBarTarihi.ToString("dd.MM.yyy") + ")";
+            }
+
+            public string Sonuc()
+            {
+                string result = "Veri Tarih Aralığı: " + IlkBarTarihi.ToString("dd.MM.yyy") + " - " + SonBarTarihi.ToString("dd.MM.yyy") + Environment.NewLine +
+                            Environment.NewLine +
+                            "Performans Puan(PP): " + PerformansPuan.ToString() + Environment.NewLine +
+                            "PP Profit Factor: " + PPProfitFactor.ToString() + Environment.NewLine +
+                            "PP Profit Factor Long: " + PPProfitFactorLong.ToString() + Environment.NewLine +
+                            "PP Profit Factor Short: " + PPProfitFactorShort.ToString() + Environment.NewLine +
+                            "PP MaxDD: " + PPMaxDD.ToString("0.00") + Environment.NewLine +
+                            "PP MaxDD Tarih Aralığı: " + PPMaxDDBaslangicTarih.ToString("dd.MM.yyyy") + " - " + PPMaxDDBitisTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                            "PP Kazandıran Toplam: " + PPKazandiranToplam.ToString() + Environment.NewLine +
+                            "PP Kaybettiren Toplam: " + PPKaybettirenToplam.ToString() + Environment.NewLine +
+                            Environment.NewLine +
+                            "Başlangıç Bakiyesi: " + ilkBakiyePuan.ToString() + Environment.NewLine +
+                            "Son  Bakiye: " + SonBakiyePuan.ToString() + Environment.NewLine +
+                            "Toplam Getiri : " + Puan.ToString() + Environment.NewLine +
+                            "% Getiri: " + YuzdeGetiriPuan.ToString() + Environment.NewLine +
+                             Environment.NewLine +
+                            "Toplam Kayma: " + ToplamKayma.ToString() + Environment.NewLine +
+                            "Toplam Komisyon: " + ToplamKomisyon.ToString() + Environment.NewLine +
+                            "Toplam Kayma+Komisyon: " + ToplamKaymaKomisyon.ToString() + Environment.NewLine +
+                            Environment.NewLine +
+                            "MaxDD: " + MaxDD.ToString("0.00") + Environment.NewLine +
+                            "MaxDD Tarih Aralığı: " + MaxDDBaslangicTarih.ToString("dd.MM.yyyy") + " - " + MaxDDBitisTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                             Environment.NewLine +
+                            "Toplam İşlem Sayısı: " + ToplamIslemSayisi.ToString() + Environment.NewLine +
+                            "Aylık İşlem Ortalaması: " + AylikIslemOrtalamasi.ToString() + Environment.NewLine +
+                            "Karlı İslem Sayısı % : " + KarliIslemSayisiYuzde.ToString() + Environment.NewLine +
+                            "Kazandıran İslem Sayısı: " + KazandiranIslemSayisi.ToString() + Environment.NewLine +
+                            "Kaybettiren İslem Sayısı: " + KaybettirenIslemSayisi.ToString() + Environment.NewLine +
+                            "Kazandıran Toplam: " + KazandiranToplam.ToString() + Environment.NewLine +
+                            "Kaybettiren Toplam: " + KaybettirenToplam.ToString() + Environment.NewLine +
+                            "Net Kar: " + NetKar.ToString() + Environment.NewLine +
+                            "Profit Factor: " + ProfitFactor.ToString() + Environment.NewLine +
+                            "Profit Factor Long: " + ProfitFactorLong.ToString() + Environment.NewLine +
+                            "Profit Factor Short: " + ProfitFactorShort.ToString() + Environment.NewLine +
+                            "Sharpe Ratio: " + SharpeRatio.ToString() + Environment.NewLine +
+                            "Sortino Ratio: " + SortinoRatio.ToString() + Environment.NewLine +
+                            "En Buyuk Kar: " + EnBuyukKar.ToString() + Environment.NewLine +
+                            "En Buyuk Zarar: " + EnBuyukZarar.ToString() + Environment.NewLine +
+                            "Ardisik Kar Sayısı: " + ArdisikKarSayisi.ToString() + Environment.NewLine +
+                            "Ardisik Kar Miktarı: " + ArdisikKarMiktari.ToString() + Environment.NewLine +
+                            "Ardisik Zarar Sayısı: " + ArdisikZararSayisi.ToString() + Environment.NewLine +
+                            "Ardisik Zarar Miktarı: " + ArdisikZararMiktari.ToString() + Environment.NewLine +
+                            "Alim İslemi Sayısı: " + AlimIslemiSayisi.ToString() + Environment.NewLine +
+                            "Alim İslemi Yüzdesi: " + AlimIslemiYuzdesi.ToString() + Environment.NewLine +
+                            "Satim İslemi Sayısı: " + SatimIslemiSayisi.ToString() + Environment.NewLine +
+                            "Satim İslemi Yüzdesi: " + SatimIslemiYuzdesi.ToString() + Environment.NewLine +
+                            "Mutlu Gün: " + MutluGun.ToString() + Environment.NewLine +
+                            "Mutsuz Gün: " + MutsuzGun.ToString() + Environment.NewLine +
+                            "Yeni Yüksek Max. Gün:" + YeniYuksekMaxGun + Environment.NewLine +
+                            "Yeni Yüksek Max. Gün Tarih:" + YeniYuksekMaxGunTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                            Environment.NewLine +
+                            GetiriAySure.ToString() + " Ay: " + GetiriAySureKZ.ToString() + Environment.NewLine +
+                            "Getiri Bugün: " + GetiriBugun.ToString() + Environment.NewLine +
+                            "Getiri Bu Hafta: " + GetiriBuHafta.ToString() + Environment.NewLine +
+                            "Getiri Bu Ay: " + GetiriBuAy.ToString() + Environment.NewLine +
+                            "Getiri Bu Yıl: " + GetiriBuYil.ToString() + Environment.NewLine +
+                            "Getiri 1 Ay: " + Getiri1Ay.ToString() + Environment.NewLine +
+                            "Getiri 2 Ay: " + Getiri2Ay.ToString() + Environment.NewLine +
+                            "Getiri 3 Ay: " + Getiri3Ay.ToString() + Environment.NewLine +
+                            "Getiri 6 Ay: " + Getiri6Ay.ToString() + Environment.NewLine +
+                            "Getiri 1 Yıl: " + Getiri1Yil.ToString() + Environment.NewLine +
+                            Environment.NewLine +
+                            GetiriAySure.ToString() + " Ay: " + GetiriAySureKZPP.ToString() + Environment.NewLine +
+                            "PP Getiri Bugün: " + GetiriBugunPP.ToString() + Environment.NewLine +
+                            "PP Getiri Bu Hafta: " + GetiriBuHaftaPP.ToString() + Environment.NewLine +
+                            "PP Getiri Bu Ay: " + GetiriBuAyPP.ToString() + Environment.NewLine +
+                            "PP Getiri Bu Yıl: " + GetiriBuYilPP.ToString() + Environment.NewLine +
+                            "PP Getiri 1 Ay: " + Getiri1AyPP.ToString() + Environment.NewLine +
+                            "PP Getiri 2 Ay: " + Getiri2AyPP.ToString() + Environment.NewLine +
+                            "PP Getiri 3 Ay: " + Getiri3AyPP.ToString() + Environment.NewLine +
+                            "PP Getiri 6 Ay: " + Getiri6AyPP.ToString() + Environment.NewLine +
+                            "PP Getiri 1 Yıl: " + Getiri1YilPP.ToString() + Environment.NewLine;
+
+                result += Environment.NewLine + "Aylık Puanlar";
+                foreach (var pair in AyPuanOzetListe)
+                {
+                    result += Environment.NewLine + pair.Key.ToString("MM.yyyy") + ": " + pair.Value.ToString("0.00");
+                }
+
+                result += Environment.NewLine + Environment.NewLine + "Aylık PP ler";
+                foreach (var pair in AyPuanOzetListePP)
+                {
+                    result += Environment.NewLine + pair.Key.ToString("MM.yyyy") + ": " + pair.Value.ToString("0.00");
+                }
+
+                return result;
+
+
+
+            }
+
+
+            public void Cizgi1(int Panel, int pCizgi1, int pCizgi2, int pCizgi3)
+            {
+                //Basamaklı Günlük Kar-Zarar ve Aylık Başlangıç Çizgisi----------------------------------------
+                int panelgunlukkz = Panel;
+                int cizgino1 = pCizgi1; //Ayarlardan işaretlenmesi yeterlidir.
+                int cizgino2 = pCizgi2; //Ayarlardan işaretlenmesi yeterlidir.
+                int cizgino3 = pCizgi3; //Ayarlardan işaretlenmesi yeterlidir.
+                Sistem.Cizgiler[cizgino1].Aciklama = "Gün Başlangıç KZ";
+                Sistem.Cizgiler[cizgino1].Deger = PuanGunBasiList; // Performans.PuanGunBasiList;
+                Sistem.Cizgiler[cizgino1].Panel = panelgunlukkz;
+                Sistem.Cizgiler[cizgino1].Stil = 4;
+                Sistem.Cizgiler[cizgino1].Renk = Color.Black;
+                Sistem.Cizgiler[cizgino2].Aciklama = "Gün Sonu KZ";
+                Sistem.Cizgiler[cizgino2].Deger = PuanGunSonuList; //Performans.PuanGunSonuList;
+                Sistem.Cizgiler[cizgino2].Panel = panelgunlukkz;
+                Sistem.Cizgiler[cizgino2].Stil = 4;
+                Sistem.Cizgiler[cizgino2].Renk = Color.Black;
+                Sistem.DolguEkle(cizgino1, cizgino2, Color.Red, Color.Lime);
+                Sistem.Cizgiler[cizgino3].Aciklama = "Ay Başlangıç KZ";
+                Sistem.Cizgiler[cizgino3].Deger = PuanAyBasiList;  //Performans.PuanAyBasiList;
+                Sistem.Cizgiler[cizgino3].Panel = panelgunlukkz;
+                Sistem.Cizgiler[cizgino3].Renk = Color.Yellow;
+                //----------------------------------------------------------------------------------------------
+            }
+
+            public void Tarihce(int Panel, string Tip = "P")
+            {
+
+                string Labels = "";
+                if (Tip.ToUpper() == "P")
+                    Labels = GetiriAySure.ToString() + " Ay" + Environment.NewLine +
+                                        "Bugün" + Environment.NewLine +
+                                        "Bu Hafta" + Environment.NewLine +
+                                        "Bu Ay" + Environment.NewLine +
+                                        "Bu Yıl" + Environment.NewLine +
+                                        "1 Ay" + Environment.NewLine +
+                                        "2 Ay" + Environment.NewLine +
+                                        "3 Ay" + Environment.NewLine +
+                                        "6 Ay" + Environment.NewLine +
+                                        "1 Yıl";
+
+                else if (Tip.ToUpper() == "PP")
+                    Labels = GetiriAySure.ToString() + " Ay" + Environment.NewLine +
+                                        "Bugün" + Environment.NewLine +
+                                        "Bu Hafta" + Environment.NewLine +
+                                        "Bu Ay" + Environment.NewLine +
+                                        "Bu Yıl" + Environment.NewLine +
+                                        "1 Ay" + Environment.NewLine +
+                                        "2 Ay" + Environment.NewLine +
+                                        "3 Ay" + Environment.NewLine +
+                                        "6 Ay" + Environment.NewLine +
+                                        "1 Yıl" + Environment.NewLine +
+                                        Environment.NewLine +
+                                        "PP Değerleridir.";
+
+                string Results = "";
+
+                if (Tip.ToUpper() == "P")
+                    Results = GetiriAySureKZ + Environment.NewLine +
+                                GetiriBugun.ToString() + Environment.NewLine +
+                                GetiriBuHafta.ToString() + Environment.NewLine +
+                                GetiriBuAy.ToString() + Environment.NewLine +
+                                GetiriBuYil.ToString() + Environment.NewLine +
+                                Getiri1Ay.ToString() + Environment.NewLine +
+                                Getiri2Ay.ToString() + Environment.NewLine +
+                                Getiri3Ay.ToString() + Environment.NewLine +
+                                Getiri6Ay.ToString() + Environment.NewLine +
+                                Getiri1Yil.ToString();
+
+                else if (Tip.ToUpper() == "PP")
+                    Results = GetiriAySureKZPP + Environment.NewLine +
+                                GetiriBugunPP.ToString() + Environment.NewLine +
+                                GetiriBuHaftaPP.ToString() + Environment.NewLine +
+                                GetiriBuAyPP.ToString() + Environment.NewLine +
+                                GetiriBuYilPP.ToString() + Environment.NewLine +
+                                Getiri1AyPP.ToString() + Environment.NewLine +
+                                Getiri2AyPP.ToString() + Environment.NewLine +
+                                Getiri3AyPP.ToString() + Environment.NewLine +
+                                Getiri6AyPP.ToString() + Environment.NewLine +
+                                Getiri1YilPP.ToString();
+
+                int PanelY = 33;
+                Sistem.Dortgen(Panel, 10, PanelY - 8, 140, 175, Color.Black, Color.Black, Color.White);
+                Sistem.GradientYaziEkle(Labels, 2, 20, PanelY, Color.White, Color.White, "Tahoma", 10);
+                Sistem.GradientYaziEkle(Results, 2, 90, PanelY, Color.Yellow, Color.DarkOrange, "Tahoma", 10);
+            }
+
+            public void Ozet(int Panel, string Tip = "P")
+            {
+                string Labels = "";
+                if (Tip.ToUpper() == "P")
+                    Labels = "İslem / Ortalama" + Environment.NewLine +
+
+                                "Karlı İşlem Oranı" + Environment.NewLine +
+                                "Profit Factor, L, S" + Environment.NewLine +
+                                "Sharpe-Sortino Ratio" + Environment.NewLine +
+                                "MaxDD" + Environment.NewLine +
+                                "MaxDD Tarihi" + Environment.NewLine +
+                                "Yeni Yüksek Max.Gün" + Environment.NewLine +
+                                "Yeni Y.Max.Gün Tarih" + Environment.NewLine +
+                                "Mutlu / Mutsuz Gün" + Environment.NewLine +
+                                "Kayma + Komisyon" + Environment.NewLine;
+
+
+                else if (Tip.ToUpper() == "PP")
+                    Labels = "İslem / Ortalama" + Environment.NewLine +
+                                "Karlı İşlem Oranı" + Environment.NewLine +
+                                "Profit Factor, L, S" + Environment.NewLine +
+                                "Sharpe-Sortino Ratio" + Environment.NewLine +
+                                "MaxDD" + Environment.NewLine +
+                                "MaxDD Tarihi" + Environment.NewLine +
+                                "Yeni Yüksek Max.Gün" + Environment.NewLine +
+                                "Yeni Y.Max.Gün Tarih" + Environment.NewLine +
+                                "Mutlu / Mutsuz Gün" + Environment.NewLine +
+                                "Kayma + Komisyon" + Environment.NewLine +
+                                Environment.NewLine +
+                                "PP Değerleridir.";
+
+                string Results = "";
+
+                if (Tip.ToUpper() == "P")
+                    Results = ToplamIslemSayisi.ToString() + " / " + AylikIslemOrtalamasi.ToString() + Environment.NewLine +
+                                 "%" + KarliIslemSayisiYuzde.ToString() + Environment.NewLine +
+                                 ProfitFactor.ToString() + "-" + ProfitFactorLong.ToString() + "-" + ProfitFactorShort.ToString() + Environment.NewLine +
+                                 SharpeRatio.ToString() + " - " + SortinoRatio.ToString() + Environment.NewLine +
+                                 MaxDD.ToString() + Environment.NewLine +
+                                 MaxDDBaslangicTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                                 YeniYuksekMaxGun.ToString() + Environment.NewLine +
+                                 YeniYuksekMaxGunTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                                 MutluGun.ToString() + " / " + MutsuzGun.ToString() + Environment.NewLine +
+                                 ToplamKaymaKomisyon.ToString();
+
+
+                else if (Tip.ToUpper() == "PP")
+                    Results = ToplamIslemSayisi.ToString() + " / " + AylikIslemOrtalamasi.ToString() + Environment.NewLine +
+                                 "%" + KarliIslemSayisiYuzde.ToString() + Environment.NewLine +
+                                 PPProfitFactor.ToString() + "-" + PPProfitFactorLong.ToString() + "-" + PPProfitFactorShort.ToString() + Environment.NewLine +
+                                 SharpeRatio.ToString() + " - " + SortinoRatio.ToString() + Environment.NewLine +
+                                 PPMaxDD.ToString() + Environment.NewLine +
+                                 PPMaxDDBaslangicTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                                 YeniYuksekMaxGun.ToString() + Environment.NewLine +
+                                 YeniYuksekMaxGunTarih.ToString("dd.MM.yyyy") + Environment.NewLine +
+                                 MutluGun.ToString() + " / " + MutsuzGun.ToString() + Environment.NewLine +
+                                 ToplamKaymaKomisyon.ToString() + " (P)";
+
+
+                int PanelY = 33;
+                Sistem.Dortgen(Panel, 160, PanelY - 8, 280, 175, Color.Black, Color.Black, Color.White);
+                Sistem.GradientYaziEkle(Labels, 2, 170, PanelY, Color.White, Color.White, "Tahoma", 10);
+                Sistem.GradientYaziEkle(Results, 2, 325, PanelY, Color.Yellow, Color.DarkOrange, "Tahoma", 10);
+            }
+
+            public void Aylar(int Panel, string Tip = "P")
+            {
+
+                string EtiketKolon1 = "";
+                string EtiketKolon2 = "";
+
+                string DegerKolon1 = "";
+                string DegerKolon2 = "";
+
+                int i = 0;
+                foreach (var pair in AyPuanOzetListe)
+                {
+                    i += 1;
+                    if (i <= 12)
+                        EtiketKolon1 += pair.Key.ToString("MM.yyyy") + Environment.NewLine;
+                    else if (i <= 24)
+                        EtiketKolon2 += pair.Key.ToString("MM.yyyy") + Environment.NewLine;
+                    else break;
+                }
+
+                int j = 0;
+                if (Tip.ToUpper() == "P")
+                    foreach (var pair in AyPuanOzetListe)
+                    {
+                        j += 1;
+                        if (j <= 12)
+                            DegerKolon1 += pair.Value.ToString("0.00") + Environment.NewLine;
+                        else if (j <= 24)
+                            DegerKolon2 += pair.Value.ToString("0.00") + Environment.NewLine;
+                        else break;
+                    }
+                else if (Tip.ToUpper() == "PP")
+                    foreach (var pair in AyPuanOzetListePP)
+                    {
+                        j += 1;
+                        if (j <= 12)
+                            DegerKolon1 += pair.Value.ToString("0.00") + Environment.NewLine;
+                        else if (j <= 24)
+                            DegerKolon2 += pair.Value.ToString("0.00") + Environment.NewLine;
+                        else break;
+                    }
+
+
+                int PanelY = 33;
+                Sistem.Dortgen(Panel, 450, PanelY - 8, 220, 175, Color.Black, Color.Black, Color.White);
+                Sistem.GradientYaziEkle(EtiketKolon1, 2, 460, PanelY, Color.White, Color.White, "Tahoma", 8);
+                Sistem.GradientYaziEkle(DegerKolon1, 2, 520, PanelY, Color.Yellow, Color.DarkOrange, "Tahoma", 8);
+                Sistem.GradientYaziEkle(EtiketKolon2, 2, 560, PanelY, Color.White, Color.White, "Tahoma", 8);
+                Sistem.GradientYaziEkle(DegerKolon2, 2, 620, PanelY, Color.Yellow, Color.DarkOrange, "Tahoma", 8);
+                if (Tip.ToUpper() == "PP")
+                    Sistem.GradientYaziEkle("PP Değerleridir.", 2, 460, 210, Color.White, Color.White, "Tahoma", 10);
+            }
+            public void imza(string Ad, string LogoDosyaAd = "")
+            {
+                Sistem.Dortgen(1, 160, 42, 160, 98, Color.Yellow, Color.Orange, Color.Orange);
+                if (LogoDosyaAd != "") Sistem.ResimEkle(LogoDosyaAd, 1, 165, 48);
+                Sistem.ZeminYazisiEkle(
+                            Ad
+                            , 1, 160, 75 + (LogoDosyaAd != "" ? 15 : 0), Sistem.Renk(250, 49, 49, 49), "Tahoma", 24
+                            );
+            }
+
+
+            public int SonBarNo;
+            public int ilkBarNo;
+            public double SonOrtalamaKaymaPuani;
+
+        }
+
+        public PerformansMetrikleri Performans(
+                                              dynamic Sistem, string BaslangicTarih = "01.01.2000", string BitisTarih = "01.01.2050"
+                                            , float xKademeKayma = 0, float KaymaPuan = 0, double pKomisyonOrani = 0, float IlkBakiye = 0, int Lot = 1, bool AcikIslem = true
+                                            , string pSembol = null, dynamic pVeriler = null, dynamic pYonler = null, dynamic pSeviyeler = null
+                                            , bool Hizli = false
+                                          )
+        {
+            //Ana Verileri Değişkenlerde Topla (Sistem den oluşabilir veya özel durumlarda paramatre geçilebilir.)
+            string Sembol = (pSembol == null ? Sistem.Sembol : pSembol);
+            dynamic Veriler = (pVeriler == null ? Sistem.GrafikVerileri : pVeriler);
+            dynamic Yonler = (pYonler == null ? Sistem.Yon : pYonler);
+            dynamic Seviyeler = (pSeviyeler == null ? Sistem.Seviye : pSeviyeler);
+
+            if (BaslangicTarih == "") BaslangicTarih = "01.01.2000";
+            if (BitisTarih == "") BitisTarih = "01.01.2050";
+            float KomisyonOrani = (float)(pKomisyonOrani / 10000);
+
+
+            PerformansMetrikleri PerformansMetrikleri = new PerformansMetrikleri();
+            PerformansMetrikleri.Sistem = Sistem;
+
+            try
+            {
+                //Değişkenler
+
+                List<float> PuanList = new List<float>(new float[Veriler.Count]);
+                List<float> PerformansPuanList = new List<float>(new float[Veriler.Count]);
+                List<float> KaymaList = new List<float>(new float[Veriler.Count]);
+                List<float> KomisyonList = new List<float>(new float[Veriler.Count]);
+                List<float> KaymaKomisyonList = new List<float>(new float[Veriler.Count]);
+                List<float> PPGunBasiList = new List<float>(new float[Veriler.Count]);
+                List<float> PPGunSonuList = new List<float>(new float[Veriler.Count]);
+                List<float> PuanGunBasiList = new List<float>(new float[Veriler.Count]);
+                List<float> PuanGunSonuList = new List<float>(new float[Veriler.Count]);
+                List<float> PPAyBasiList = new List<float>(new float[Veriler.Count]);
+                List<float> PPAyNetList = new List<float>(new float[Veriler.Count]);
+                List<float> PPAySonuList = new List<float>(new float[Veriler.Count]);
+                List<float> PuanAyBasiList = new List<float>(new float[Veriler.Count]);
+                List<float> PuanAySonuList = new List<float>(new float[Veriler.Count]);
+                List<float> PuanAyNetList = new List<float>(new float[Veriler.Count]);
+
+                //Detay Tablo Değişkeni
+                List<List<object>> Liste = new List<List<object>>()
+            {
+                 new List<object>() { "No", "Yön","Lot", "Açılış Tarihi", "Açılış Fyt","Kapanış Tarihi", "Kapanış Fyt","Kar/Zarar","Bakiye","%Kar/Zarar", "Durum" },
+                 new List<object>() { "Double","String","Double","String", "Double","String", "Double","Double","Double","Double" ,"String"  }
+            };
+
+                //Hesaplamalar
+                var SonYon = "F"; double SonAlFiyat = 0.0; double SonSatFiyat = 0.0; DateTime SonAlTarih = new DateTime(2000, 1, 1); DateTime SonSatTarih = new DateTime(2000, 1, 1);
+                double Bakiye = IlkBakiye;
+                double YuzdeBakiye = 0;
+                double Puan = 0;
+                double EnYuksekPuan = 0;
+                double EnYuksekYuzdePuan = 0;
+                DateTime EnYuksekTarih = DateTime.MaxValue;
+                DateTime EnYuksekYuzdePuanTarih = new DateTime(2000, 1, 1);
+                int YeniYuksekMaxGun = 0;
+                DateTime YeniYuksekMaxGunTarih = new DateTime(2000, 1, 1);
+                double Kayma = 0; double KaymaBakiye = 0;
+                double Komisyon = 0; double KomisyonBakiye = 0;
+                double HamFark = 0;
+                double OncekiPuan = 0;
+                double YuzdeKarZarar = 0;
+                double AcilisFiyat = 0;
+                double KapanisFiyat = 0;
+                bool ilk = false;
+                string Yon = "";
+                string AcilisTarihi = "";
+                string KapanisTarihi = "";
+
+                float SonArdisikKarSayisi = 0;
+                float SonArdisikKarMiktari = 0;
+                float SonArdisikZararSayisi = 0;
+                float SonArdisikZararMiktari = 0;
+
+                int BuHaftaBarno = 0;
+                int BuAyBarno = 0;
+                int BuYilBarno = 0;
+                int Barno1Ay = 0;
+                int Barno2Ay = 0;
+                int Barno3Ay = 0;
+                int Barno6Ay = 0;
+                int Barno1Yil = 0;
+
+
+                for (int i = 1; i < Veriler.Count; i++)
+                {
+                    if (BaslangicTarih != "")
+                        if (Veriler[i].Date < DateTime.ParseExact(BaslangicTarih, "dd.MM.yyyy", System.Globalization.CultureInfo.CurrentCulture))
+                            continue;
+                    if (BitisTarih != "")
+                        if (Veriler[i].Date > DateTime.ParseExact(BitisTarih, "dd.MM.yyyy", System.Globalization.CultureInfo.CurrentCulture))
+                            break;
+                    if (ilk == false) { ilk = true; PerformansMetrikleri.IlkBarTarihi = Veriler[i].Date; PerformansMetrikleri.ilkBarNo = i; }
+                    float fiyat = Veriler[i].Close;
+                    string Sinyal = Yonler[i];
+
+                    //Kademe Puanı Hesapla-------------------------------------------------------------------------------------------------------------------------------
+                    double Kademe = 0; double OrtalamaKaymaPuani = 0;
+                    //Kayma Kademe cinsinden verildi ise;
+                    if (xKademeKayma > 0)
+                    {
+                        //VIP-X030; VIP-USD; VIP-EUR ana kodları ve vadeleri için 1 kademe değerleri;
+                        if (Sembol.Contains("F_XU030") || Sembol.Contains("VIP-X030")) Kademe = 0.025;
+                        else if (Sembol.Contains("F_USD") || Sembol.Contains("F_EUR") || Sembol.Contains("VIP-USD") || Sembol.Contains("VIP-EUR")) Kademe = 0.0001;
+                        //Hisse Senedi veya Diğer kodlar için 1 kademe değerleri (Hisse senedi olmayan diğer kodlar için hatalı olabilir, ya tanımlanmalı yada puan seçeneği kullanılmalıdır.)
+                        else if (fiyat >= 0.01 && fiyat <= 19.99) Kademe = 0.01;
+                        else if (fiyat >= 20 && fiyat <= 49.98) Kademe = 0.02;
+                        else if (fiyat >= 50 && fiyat <= 99.95) Kademe = 0.05;
+                        else if (fiyat >= 100) Kademe = 0.10;
+                        else Kademe = 0.01;
+                        OrtalamaKaymaPuani = Kademe * xKademeKayma;
+                    }
+                    //--Kayma Puan cinsinden verildi ise;
+                    else if (KaymaPuan > 0) OrtalamaKaymaPuani = KaymaPuan;
+                    //--Kayma Yok ise
+                    else OrtalamaKaymaPuani = 0;
+                    //-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+                    if (Sinyal == "A" || Sinyal == "S" || (Sinyal == "F" && SonYon != "F") || (SonYon != "F"))
+                    {
+                        bool islemvar = false;
+
+                        if (Sinyal == "A")
+                        {
+                            SonAlFiyat = Seviyeler[i] != 0 ? Seviyeler[i] : Veriler[i].Close;
+                            SonAlTarih = Veriler[i].Date;
+
+                            if (SonYon == "S") //Short Kapatılıp Long Açılıyor
+                            {
+                                Yon = "Satış";
+                                AcilisFiyat = SonSatFiyat;
+                                AcilisTarihi = SonSatTarih.ToString("dd.MM.yyyy HH:mm");
+                                KapanisFiyat = SonAlFiyat;
+                                KapanisTarihi = SonAlTarih.ToString("dd.MM.yyyy HH:mm");
+                                HamFark = AcilisFiyat - KapanisFiyat;
+                            }
+                            else if (SonYon == "F") //Flat İken Long Açılıyorsa
+                            {
+                                AcilisFiyat = SonAlFiyat;
+                                KapanisFiyat = fiyat;
+                                HamFark = AcilisFiyat - KapanisFiyat;
+                            }
+                        }
+                        else if (Sinyal == "S")
+                        {
+                            SonSatFiyat = Seviyeler[i] != 0 ? Seviyeler[i] : Veriler[i].Close;
+                            SonSatTarih = Veriler[i].Date;
+
+                            if (SonYon == "A") //Long Kapatılıyor, Short Açılıyor
+                            {
+                                Yon = "Alış";
+                                AcilisFiyat = SonAlFiyat;
+                                AcilisTarihi = SonAlTarih.ToString("dd.MM.yyyy HH:mm");
+                                KapanisFiyat = SonSatFiyat;
+                                KapanisTarihi = SonSatTarih.ToString("dd.MM.yyyy HH:mm");
+                                HamFark = KapanisFiyat - AcilisFiyat;
+                            }
+                            else if (SonYon == "F") //Flat İken Short Açılıyor
+                            {
+                                AcilisFiyat = SonSatFiyat;
+                                KapanisFiyat = fiyat;
+                                HamFark = KapanisFiyat - AcilisFiyat;
+                            }
+                        }
+                        else if (Sinyal == "F")
+                        {
+                            if (SonYon == "A") //Satarak Flat olunuyor
+                            {
+                                SonSatFiyat = Seviyeler[i] != 0 ? Seviyeler[i] : Veriler[i].Close;
+                                SonSatTarih = Veriler[i].Date;
+
+                                Yon = "Alış";
+                                AcilisFiyat = SonAlFiyat;
+                                AcilisTarihi = SonAlTarih.ToString("dd.MM.yyyy HH:mm");
+                                KapanisFiyat = SonSatFiyat;
+                                KapanisTarihi = SonSatTarih.ToString("dd.MM.yyyy HH:mm");
+                                HamFark = KapanisFiyat - AcilisFiyat;
+                            }
+                            else if (SonYon == "S") //Alarak Flat olunuyor
+                            {
+                                SonAlFiyat = Seviyeler[i] != 0 ? Seviyeler[i] : Veriler[i].Close;
+                                SonAlTarih = Veriler[i].Date;
+
+                                Yon = "Satış";
+                                AcilisFiyat = SonSatFiyat;
+                                AcilisTarihi = SonSatTarih.ToString("dd.MM.yyyy HH:mm");
+                                KapanisFiyat = SonAlFiyat;
+                                KapanisTarihi = SonAlTarih.ToString("dd.MM.yyyy HH:mm");
+                                HamFark = AcilisFiyat - KapanisFiyat;
+                            }
+                            else
+                            {
+                                //Son Sinyal, Açık yokken Flat anlamına gelen Sat sinyali ise sorun olmaması için:  
+                                KaymaList[i] += KaymaList[i - 1];
+                                KomisyonList[i] += KomisyonList[i - 1];
+                                PuanList[i] += PuanList[i - 1];
+                                PerformansPuanList[i] += PerformansPuanList[i - 1];
+                            }
+                        }
+                        else if (SonYon != "F")   //Bar Kapanışlarının Geçici Yansımasını sağlamak için.
+                        {
+                            Yon = (SonYon == "S" ? "Satış" : "Alış");
+                            AcilisFiyat = (SonYon == "A" ? SonAlFiyat : SonSatFiyat);
+                            AcilisTarihi = (SonYon == "A" ? SonAlTarih.ToString("dd.MM.yyyy HH:mm") : SonSatTarih.ToString("dd.MM.yyyy HH:mm"));
+                            KapanisFiyat = fiyat;
+                            KapanisTarihi = Veriler[i].Date.ToString("dd.MM.yyyy HH:mm");
+                            HamFark = (SonYon == "A" ? KapanisFiyat - AcilisFiyat : AcilisFiyat - KapanisFiyat);
+
+                            //Tarih Aralığının Son Barında ise Geçici Kapanış Kaydını Yazıyoruz.
+                            if (i == Veriler.Count - 1) islemvar = true;
+                            else if (Veriler[i + 1].Date > DateTime.ParseExact(BitisTarih, "dd.MM.yyyy", System.Globalization.CultureInfo.CurrentCulture)) islemvar = true;
+                        }
+
+                        if (
+                                (Sinyal == "A" && SonYon == "S")
+                                || (Sinyal == "S" && SonYon == "A")
+                                || (Sinyal == "F" && (SonYon == "A" || SonYon == "S"))
+                           ) islemvar = true;
+
+                        if (islemvar) Kayma = (OrtalamaKaymaPuani * 2 * Lot); else Kayma = 0;
+                        KaymaList[i] = (float)(KaymaBakiye + Kayma);
+                        if (islemvar) KaymaBakiye += Kayma;
+
+                        if (islemvar) Komisyon = ((AcilisFiyat + KapanisFiyat) * KomisyonOrani * Lot); else Komisyon = 0;
+                        KomisyonList[i] = (float)(KomisyonBakiye + Komisyon);
+                        if (islemvar) KomisyonBakiye += Komisyon;
+
+                        KaymaKomisyonList[i] = KaymaList[i] + KomisyonList[i];
+
+                        Puan = (HamFark * Lot) - Kayma - Komisyon;
+                        PuanList[i] = (float)(Bakiye + Puan);
+                        if (islemvar) Bakiye += Puan;
+
+                        YuzdeKarZarar = (Puan / (AcilisFiyat * Lot)) * 100;
+                        PerformansPuanList[i] = (float)(YuzdeBakiye + YuzdeKarZarar);
+                        if (islemvar) YuzdeBakiye += YuzdeKarZarar;
+
+                        if (islemvar)
+                        {
+                            PerformansMetrikleri.ToplamIslemSayisi += 1;
+                            Liste.Add(new List<object>() { 
+                                                          /*No*/             PerformansMetrikleri.ToplamIslemSayisi
+                                                        , /*Yön*/            Yon
+                                                        , /*Lot*/            Lot.ToString()
+                                                        , /*Açılış Tarihi*/  AcilisTarihi
+                                                        , /*Açılış Fyt*/     Math.Round(AcilisFiyat,3)
+                                                        , /*Kapanış Tarihi*/ KapanisTarihi
+                                                        , /*Kapanış Fyt*/    Math.Round(KapanisFiyat,3)
+                                                        , /*Kar/Zarar*/      Math.Round(Puan,3)
+                                                        , /*Bakiye*/         Math.Round(Bakiye ,3)
+                                                        , /*%Kar/Zarar*/     Math.Round(YuzdeKarZarar,2)
+                                                        , /*Durum*/          ((Puan >= 0)? "Başarılı":"Başarısız")
+                                                    });
+
+                            //İstatistikler
+                            if (Yon == "Alış")
+                            {
+                                PerformansMetrikleri.AlimIslemiSayisi += 1;
+                            }
+                            else
+                            {
+                                PerformansMetrikleri.SatimIslemiSayisi += 1;
+                            }
+
+                            if (Puan >= 0)
+                            {
+                                PerformansMetrikleri.KazandiranIslemSayisi += 1;
+                                PerformansMetrikleri.KazandiranToplam += (float)Puan;
+                                PerformansMetrikleri.KazandiranToplamShort += (Yon == "Alış" ? 0f : (float)Puan);
+                                PerformansMetrikleri.KazandiranToplamLong += (Yon == "Satış" ? 0f : (float)Puan);
+                                PerformansMetrikleri.PPKazandiranToplam += (float)YuzdeKarZarar;
+                                PerformansMetrikleri.PPKazandiranToplamShort += (Yon == "Alış" ? 0f : (float)YuzdeKarZarar);
+                                PerformansMetrikleri.PPKazandiranToplamLong += (Yon == "Satış" ? 0f : (float)YuzdeKarZarar);
+                                if (Puan > PerformansMetrikleri.EnBuyukKar) PerformansMetrikleri.EnBuyukKar = (float)Math.Round(Puan, 2);
+                                SonArdisikKarSayisi += 1;
+                                SonArdisikKarMiktari += (float)Puan;
+                                if (SonArdisikKarSayisi > PerformansMetrikleri.ArdisikKarSayisi) PerformansMetrikleri.ArdisikKarSayisi = SonArdisikKarSayisi;
+                                if (SonArdisikKarMiktari > PerformansMetrikleri.ArdisikKarMiktari) PerformansMetrikleri.ArdisikKarMiktari = (float)Math.Round(SonArdisikKarMiktari, 2);
+                                SonArdisikZararSayisi = 0;
+                                SonArdisikZararMiktari = 0;
+                            }
+                            else
+                            {
+                                PerformansMetrikleri.KaybettirenIslemSayisi += 1;
+                                PerformansMetrikleri.KaybettirenToplam += (float)Puan;
+                                PerformansMetrikleri.KaybettirenToplamShort += (Yon == "Alış" ? 0f : (float)Puan);
+                                PerformansMetrikleri.KaybettirenToplamLong += (Yon == "Satış" ? 0f : (float)Puan);
+                                PerformansMetrikleri.PPKaybettirenToplam += (float)YuzdeKarZarar;
+                                PerformansMetrikleri.PPKaybettirenToplamShort += (Yon == "Alış" ? 0f : (float)YuzdeKarZarar);
+                                PerformansMetrikleri.PPKaybettirenToplamLong += (Yon == "Satış" ? 0f : (float)YuzdeKarZarar);
+                                if (Puan < PerformansMetrikleri.EnBuyukZarar) PerformansMetrikleri.EnBuyukZarar = (float)Math.Round(Puan, 2);
+                                SonArdisikZararSayisi += 1;
+                                SonArdisikZararMiktari += (float)Puan;
+                                if (SonArdisikZararSayisi > PerformansMetrikleri.ArdisikZararSayisi) PerformansMetrikleri.ArdisikZararSayisi = SonArdisikZararSayisi;
+                                if (SonArdisikZararMiktari < PerformansMetrikleri.ArdisikZararMiktari) PerformansMetrikleri.ArdisikZararMiktari = (float)Math.Round(SonArdisikZararMiktari, 2);
+                                SonArdisikKarSayisi = 0;
+                                SonArdisikKarMiktari = 0;
+
+
+                                //İşlem Sonrası Barın Devamını Dikkate alıyoruz
+                                if (Sinyal == "A" || Sinyal == "S")
+                                {
+                                    Puan = ((Yon == "Alış" ? KapanisFiyat - fiyat : fiyat - KapanisFiyat) * Lot);
+                                    PuanList[i] = (float)(Bakiye + Puan);
+
+                                    YuzdeKarZarar = (Puan / (AcilisFiyat * Lot)) * 100;
+                                    PerformansPuanList[i] = (float)(YuzdeBakiye + YuzdeKarZarar);
+                                }
+                            }
+
+                            OncekiPuan = Puan;
+                        } //İşlem Var Bitti
+
+
+                        //MaxDD İşlemleri
+                        if (PuanList[i] > EnYuksekPuan) { EnYuksekPuan = PuanList[i]; EnYuksekTarih = Veriler[i].Date; }
+                        if (PerformansPuanList[i] > EnYuksekYuzdePuan) { EnYuksekYuzdePuan = PerformansPuanList[i]; EnYuksekYuzdePuanTarih = Veriler[i].Date; }
+                        if (EnYuksekYuzdePuan - PerformansPuanList[i] > PerformansMetrikleri.PPMaxDD)
+                        {
+                            PerformansMetrikleri.PPMaxDD = (float)Math.Round(EnYuksekYuzdePuan - PerformansPuanList[i], 2);
+                            PerformansMetrikleri.PPMaxDDBaslangicTarih = EnYuksekYuzdePuanTarih;
+                            PerformansMetrikleri.PPMaxDDBitisTarih = Veriler[i].Date;
+                        }
+                        if (EnYuksekPuan - PuanList[i] > PerformansMetrikleri.MaxDD)
+                        {
+                            PerformansMetrikleri.MaxDD = (float)Math.Round(EnYuksekPuan - PuanList[i], 2);
+                            PerformansMetrikleri.MaxDDBaslangicTarih = EnYuksekTarih;
+                            PerformansMetrikleri.MaxDDBitisTarih = Veriler[i].Date;
+                        }
+                        //--------------
+                        if ((int)(Veriler[i].Date - EnYuksekTarih).TotalDays > YeniYuksekMaxGun)
+                        {
+                            YeniYuksekMaxGun = (int)(Veriler[i].Date - EnYuksekTarih).TotalDays;
+                            YeniYuksekMaxGunTarih = EnYuksekTarih;
+                        }
+                        //--------------
+
+                        if (Sinyal == "A" || Sinyal == "S" || (Sinyal == "F")) SonYon = Sinyal;
+                        if (Sinyal == "S" && AcikIslem == false) SonYon = "F";
+                    }
+                    else if (SonYon == "F") //Flat ise Devir
+                    {
+                        KaymaList[i] += KaymaList[i - 1];
+                        KomisyonList[i] += KomisyonList[i - 1];
+                        PuanList[i] += PuanList[i - 1];
+                        PerformansPuanList[i] += PerformansPuanList[i - 1];
+                    }
+                    PerformansMetrikleri.SonBarTarihi = Veriler[i].Date;
+                    PerformansMetrikleri.SonBarNo = i;
+                    PerformansMetrikleri.SonOrtalamaKaymaPuani = OrtalamaKaymaPuani;
+
+
+                    DateTime haftanin_ilk_gunu = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+                    if (Veriler[i - 1].Date < haftanin_ilk_gunu && Veriler[i].Date >= haftanin_ilk_gunu) BuHaftaBarno = i - 1;
+                    DateTime ayin_ilk_gunu = new DateTime(Veriler[Veriler.Count - 1].Date.Year, Veriler[Veriler.Count - 1].Date.Month, 1);
+                    if (Veriler[i - 1].Date < ayin_ilk_gunu && Veriler[i].Date >= ayin_ilk_gunu) BuAyBarno = i - 1;
+                    DateTime yilin_ilk_gunu = new DateTime(Veriler[Veriler.Count - 1].Date.Year, 1, 1);
+                    if (Veriler[i - 1].Date < yilin_ilk_gunu && Veriler[i].Date >= yilin_ilk_gunu) BuYilBarno = i - 1;
+                    if (Veriler[i - 1].Date < Veriler[Veriler.Count - 1].Date.AddMonths(-1) && Veriler[i].Date >= Veriler[Veriler.Count - 1].Date.AddMonths(-1)) Barno1Ay = i - 1;
+                    if (Veriler[i - 1].Date < Veriler[Veriler.Count - 1].Date.AddMonths(-2) && Veriler[i].Date >= Veriler[Veriler.Count - 1].Date.AddMonths(-2)) Barno2Ay = i - 1;
+                    if (Veriler[i - 1].Date < Veriler[Veriler.Count - 1].Date.AddMonths(-3) && Veriler[i].Date >= Veriler[Veriler.Count - 1].Date.AddMonths(-3)) Barno3Ay = i - 1;
+                    if (Veriler[i - 1].Date < Veriler[Veriler.Count - 1].Date.AddMonths(-6) && Veriler[i].Date >= Veriler[Veriler.Count - 1].Date.AddMonths(-6)) Barno6Ay = i - 1;
+                    if (Veriler[i - 1].Date < Veriler[Veriler.Count - 1].Date.AddMonths(-12) && Veriler[i].Date >= Veriler[Veriler.Count - 1].Date.AddMonths(-12)) Barno1Yil = i - 1;
+                } //for bitti
+
+                //Performans Tablosu
+                PerformansMetrikleri.DetayTablo = Liste;
+
+                int j = PerformansMetrikleri.SonBarNo;
+
+                PerformansMetrikleri.PerformansPuan = (float)Math.Round(PerformansPuanList[j], 2);
+
+                //Toplam Puan Getirileri
+                PerformansMetrikleri.ilkBakiyePuan = (float)Math.Round(IlkBakiye, 2);
+                PerformansMetrikleri.SonBakiyePuan = (float)Math.Round(PuanList[j], 2);
+                PerformansMetrikleri.Puan = (float)Math.Round((PerformansMetrikleri.SonBakiyePuan - PerformansMetrikleri.ilkBakiyePuan), 2);
+                PerformansMetrikleri.YuzdeGetiriPuan = (float)Math.Round((IlkBakiye == 0 ? 0 : ((PuanList[j] - IlkBakiye) / IlkBakiye * 100)), 2);
+                PerformansMetrikleri.ToplamKayma = (float)Math.Round(KaymaList[j], 2);
+                PerformansMetrikleri.ToplamKomisyon = (float)Math.Round(KomisyonList[j], 2);
+                PerformansMetrikleri.ToplamKaymaKomisyon = PerformansMetrikleri.ToplamKayma + PerformansMetrikleri.ToplamKomisyon;
+
+                //İşlem Sayıları
+                PerformansMetrikleri.AylikIslemOrtalamasi = (float)Math.Round(PerformansMetrikleri.ToplamIslemSayisi / (PerformansMetrikleri.SonBarTarihi.Subtract(PerformansMetrikleri.IlkBarTarihi).Days / (365.25 / 12)), 2);
+                PerformansMetrikleri.KarliIslemSayisiYuzde = (float)Math.Round((double)PerformansMetrikleri.KazandiranIslemSayisi / PerformansMetrikleri.ToplamIslemSayisi * 100, 2);
+                PerformansMetrikleri.NetKar = PerformansMetrikleri.Puan - PerformansMetrikleri.ToplamKaymaKomisyon;
+                PerformansMetrikleri.ProfitFactor = (float)Math.Round(PerformansMetrikleri.KazandiranToplam / (PerformansMetrikleri.KaybettirenToplam < 0 ? PerformansMetrikleri.KaybettirenToplam * -1 : PerformansMetrikleri.KazandiranToplam), 2);
+                PerformansMetrikleri.ProfitFactorShort = (float)Math.Round(PerformansMetrikleri.KazandiranToplamShort / (PerformansMetrikleri.KaybettirenToplamShort < 0 ? PerformansMetrikleri.KaybettirenToplamShort * -1 : PerformansMetrikleri.KazandiranToplamShort), 2);
+                PerformansMetrikleri.ProfitFactorLong = (float)Math.Round(PerformansMetrikleri.KazandiranToplamLong / (PerformansMetrikleri.KaybettirenToplamLong < 0 ? PerformansMetrikleri.KaybettirenToplamLong * -1 : PerformansMetrikleri.KazandiranToplamLong), 2);
+                PerformansMetrikleri.PPProfitFactor = (float)Math.Round(PerformansMetrikleri.PPKazandiranToplam / (PerformansMetrikleri.PPKaybettirenToplam < 0 ? PerformansMetrikleri.PPKaybettirenToplam * -1 : PerformansMetrikleri.PPKazandiranToplam), 2);
+                PerformansMetrikleri.PPProfitFactorShort = (float)Math.Round(PerformansMetrikleri.PPKazandiranToplamShort / (PerformansMetrikleri.PPKaybettirenToplamShort < 0 ? PerformansMetrikleri.PPKaybettirenToplamShort * -1 : PerformansMetrikleri.PPKazandiranToplamShort), 2);
+                PerformansMetrikleri.PPProfitFactorLong = (float)Math.Round(PerformansMetrikleri.PPKazandiranToplamLong / (PerformansMetrikleri.PPKaybettirenToplamLong < 0 ? PerformansMetrikleri.PPKaybettirenToplamLong * -1 : PerformansMetrikleri.PPKazandiranToplamLong), 2);
+                PerformansMetrikleri.AlimIslemiYuzdesi = (float)Math.Round(PerformansMetrikleri.AlimIslemiSayisi / PerformansMetrikleri.ToplamIslemSayisi * 100, 2);
+                PerformansMetrikleri.SatimIslemiYuzdesi = (float)Math.Round(PerformansMetrikleri.SatimIslemiSayisi / PerformansMetrikleri.ToplamIslemSayisi * 100, 2);
+                if (Hizli) return PerformansMetrikleri;
+                //Listeler
+                PerformansMetrikleri.PuanList = PuanList;
+                PerformansMetrikleri.PerformansPuanList = PerformansPuanList;
+                PerformansMetrikleri.KaymaList = KaymaList;
+                PerformansMetrikleri.KomisyonList = KomisyonList;
+                PerformansMetrikleri.KaymaKomisyonList = KaymaKomisyonList;
+
+                //
+                PerformansMetrikleri.YeniYuksekMaxGun = YeniYuksekMaxGun;
+                PerformansMetrikleri.YeniYuksekMaxGunTarih = YeniYuksekMaxGunTarih;
+
+
+                //Gün Başı Puan Listeleri Hesaplamaları
+                List<float> GunlukKZList = new List<float>();//Sharpe için
+                for (int i = 0; i < PuanList.Count; i++)
+                {
+                    if (i == 0) { PuanGunBasiList[i] = PuanList[i]; PPGunBasiList[i] = PerformansPuanList[i]; continue; }
+                    PuanGunBasiList[i] = PuanGunBasiList[i - 1];
+                    PPGunBasiList[i] = PPGunBasiList[i - 1];
+                    if (Veriler[i].Date.Day != Veriler[i - 1].Date.Day)
+                    {
+                        GunlukKZList.Add(PuanList[i]); //Sharpe için
+                        PuanGunBasiList[i] = PuanList[i - 1];
+                        PPGunBasiList[i] = PerformansPuanList[i - 1];
+                    }
+                }
+                PerformansMetrikleri.PuanGunBasiList = PuanGunBasiList;
+                PerformansMetrikleri.PPGunBasiList = PPGunBasiList;
+
+                //Gün Sonu Puan Listeleri Hesaplamaları               
+                for (int i = PuanList.Count - 1; i >= PerformansMetrikleri.ilkBarNo; i--)
+                {
+                    if (i == PuanList.Count - 1) { PuanGunSonuList[i] = PuanList[i]; PPGunSonuList[i] = PerformansPuanList[i]; continue; }
+                    PuanGunSonuList[i] = PuanGunSonuList[i + 1];
+                    PPGunSonuList[i] = PPGunSonuList[i + 1];
+                    if (Veriler[i].Date.Day != Veriler[i + 1].Date.Day)
+                    {
+                        PuanGunSonuList[i] = PuanList[i];
+                        PPGunSonuList[i] = PerformansPuanList[i];
+                        if (PuanGunSonuList[i] >= PuanGunBasiList[i]) PerformansMetrikleri.MutluGun += 1; else PerformansMetrikleri.MutsuzGun += 1;
+                    }
+                }
+                PerformansMetrikleri.PuanGunSonuList = PuanGunSonuList;
+                PerformansMetrikleri.PPGunSonuList = PPGunSonuList;
+
+                //Ay Başı Puan Listeleri Hesaplamaları
+                for (int i = 0; i <= PerformansMetrikleri.SonBarNo; i++)
+                {
+                    if (i == 0) { PuanAyBasiList[i] = PuanList[i]; PPAyBasiList[i] = PerformansPuanList[i]; continue; }
+                    PuanAyBasiList[i] = PuanAyBasiList[i - 1];
+                    PPAyBasiList[i] = PPAyBasiList[i - 1];
+                    if (Veriler[i].Date.Month != Veriler[i - 1].Date.Month)
+                    {
+                        PuanAyBasiList[i] = PuanList[i - 1];
+                        PPAyBasiList[i] = PerformansPuanList[i - 1];
+                    }
+                }
+                PerformansMetrikleri.PuanAyBasiList = PuanAyBasiList;
+                PerformansMetrikleri.PPAyBasiList = PPAyBasiList;
+
+
+                //Ay Sonu Puan Listeleri Hesaplamaları
+                for (int i = PuanList.Count - 1; i >= PerformansMetrikleri.ilkBarNo; i--)
+                {
+                    if (i == PuanList.Count - 1)
+                    {
+                        PuanAySonuList[i] = PuanList[i];
+                        PPAySonuList[i] = PerformansPuanList[i];
+                        PuanAyNetList[i] = PuanAySonuList[i] - PuanAyBasiList[i];
+                        PPAyNetList[i] = PPAySonuList[i] - PPAyBasiList[i];
+                        PerformansMetrikleri.AyPuanOzetListe.Add(Veriler[i].Date, PuanAyNetList[i]);
+                        PerformansMetrikleri.AyPuanOzetListePP.Add(Veriler[i].Date, PPAyNetList[i]);
+                        continue;
+                    }
+                    PuanAySonuList[i] = PuanAySonuList[i + 1];
+                    PPAySonuList[i] = PPAySonuList[i + 1];
+                    PuanAyNetList[i] = PuanAyNetList[i + 1];
+                    PPAyNetList[i] = PPAyNetList[i + 1];
+                    if (Veriler[i].Date.Month != Veriler[i + 1].Date.Month)
+                    {
+                        PuanAySonuList[i] = PuanList[i];
+                        PPAySonuList[i] = PerformansPuanList[i];
+                        PuanAyNetList[i] = PuanAySonuList[i] - PuanAyBasiList[i];
+                        PPAyNetList[i] = PPAySonuList[i] - PPAyBasiList[i];
+                        PerformansMetrikleri.AyPuanOzetListe.Add(Veriler[i].Date, PuanAyNetList[i]);
+                        PerformansMetrikleri.AyPuanOzetListePP.Add(Veriler[i].Date, PPAyNetList[i]);
+                    }
+                }
+                PerformansMetrikleri.PuanAySonuList = PuanAySonuList;
+                PerformansMetrikleri.PPAySonuList = PPAySonuList;
+                PerformansMetrikleri.PuanAyNetList = PuanAyNetList;
+                PerformansMetrikleri.PPAyNetList = PPAyNetList;
+
+
+                //Getiri Tarihçesi
+                PerformansMetrikleri.GetiriAySure = (float)Math.Round((PerformansMetrikleri.SonBarTarihi.Subtract(PerformansMetrikleri.IlkBarTarihi).Days / (365.25 / 12)), 2);
+                PerformansMetrikleri.GetiriAySureKZ = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j], 2);
+                PerformansMetrikleri.GetiriBugun = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunBasiList[j], 2);
+                PerformansMetrikleri.GetiriBuHafta = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[BuHaftaBarno], 2);
+                PerformansMetrikleri.GetiriBuAy = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[BuAyBarno], 2);
+                PerformansMetrikleri.GetiriBuYil = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[BuYilBarno], 2);
+                PerformansMetrikleri.Getiri1Ay = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[Barno1Ay], 2);
+                PerformansMetrikleri.Getiri2Ay = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[Barno2Ay], 2);
+                PerformansMetrikleri.Getiri3Ay = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[Barno3Ay], 2);
+                PerformansMetrikleri.Getiri6Ay = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[Barno6Ay], 2);
+                PerformansMetrikleri.Getiri1Yil = (float)Math.Round(PerformansMetrikleri.PuanGunSonuList[j] - PerformansMetrikleri.PuanGunSonuList[Barno1Yil], 2);
+
+                PerformansMetrikleri.GetiriAySureKZPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j], 2);
+                PerformansMetrikleri.GetiriBugunPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunBasiList[j], 2);
+                PerformansMetrikleri.GetiriBuHaftaPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[BuHaftaBarno], 2);
+                PerformansMetrikleri.GetiriBuAyPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[BuAyBarno], 2);
+                PerformansMetrikleri.GetiriBuYilPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[BuYilBarno], 2);
+                PerformansMetrikleri.Getiri1AyPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[Barno1Ay], 2);
+                PerformansMetrikleri.Getiri2AyPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[Barno2Ay], 2);
+                PerformansMetrikleri.Getiri3AyPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[Barno3Ay], 2);
+                PerformansMetrikleri.Getiri6AyPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[Barno6Ay], 2);
+                PerformansMetrikleri.Getiri1YilPP = (float)Math.Round(PerformansMetrikleri.PPGunSonuList[j] - PerformansMetrikleri.PPGunSonuList[Barno1Yil], 2);
+
+                PerformansMetrikleri.SharpeRatio = SharpeRatio(GunlukKZList);
+                PerformansMetrikleri.SortinoRatio = SortinoRatio(GunlukKZList);
+
+
+                return PerformansMetrikleri;
+            }
+            catch (Exception ex)
+            {
+                Sistem.Mesaj(ex.ToString());
+                return PerformansMetrikleri;
+            }
+
+        }
+
+
+        public float SharpeRatio(List<float> GunlukKZList)
+        {
+            List<double> GunlukSonuclar = new List<double>();
+
+            for (int i = 1; i < GunlukKZList.Count; i++)
+            {
+                double GunlukSonuc = GunlukKZList[i - 1] == 0 ? 0 : ((100 * GunlukKZList[i]) / GunlukKZList[i - 1]) - 100;
+                GunlukSonuclar.Add(GunlukSonuc);
+            }
+
+            double average = GunlukSonuclar.Average();
+
+            double num1 = 0;
+            foreach (double GunlukSonuc in GunlukSonuclar)
+            {
+                num1 += Math.Pow(GunlukSonuc - average, 2);
+            }
+            double stdev = Math.Sqrt(num1 / GunlukSonuclar.Count);
+
+            return (float)Math.Round(Math.Sqrt(GunlukKZList.Count) * (average / stdev), 2);
+        }
+
+        public float SortinoRatio(List<float> GunlukKZList)
+        {
+            List<double> GunlukSonuclar = new List<double>();
+
+            for (int i = 1; i < GunlukKZList.Count; i++)
+            {
+                double GunlukSonuc = GunlukKZList[i - 1] == 0 ? 0 : ((100 * GunlukKZList[i]) / GunlukKZList[i - 1]) - 100;
+                GunlukSonuclar.Add(GunlukSonuc);
+            }
+
+            double average = GunlukSonuclar.Average();
+
+            double num1 = 0;
+            foreach (double GunlukSonuc in GunlukSonuclar)
+            {
+                if (GunlukSonuc - average < 0)
+                {
+                    num1 += Math.Pow(GunlukSonuc - average, 2);
+                }
+            }
+            double stdev = Math.Sqrt(num1 / GunlukSonuclar.Count);
+
+            return (float)Math.Round(Math.Sqrt(GunlukKZList.Count) * (average / stdev), 2);
+        }
+
+
+        #endregion
+    }
+}
