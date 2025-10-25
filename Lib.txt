@@ -21,6 +21,171 @@ namespace ideal
 
     public class Lib
     {
+        #region BinancePositions
+        /// <summary>
+        /// Spot veya Futures pozisyonlarını alır ve parse eder.
+        /// </summary>
+        public List<Balance> GetPositions(dynamic Sistem, string apiKey, string secretKey, string SpotFutures)
+        {
+            string baseUrl = SpotFutures.ToLower() == "spot" ? "https://api.binance.com" : "https://fapi.binance.com";
+            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/account" : "/fapi/v2/account";
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var queryString = "timestamp=" + timestamp;
+            var signature = ComputeSignature(queryString, secretKey);
+
+            var url = baseUrl + endpoint + "?" + queryString + "&signature=" + signature;
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
+            request.Headers["X-MBX-APIKEY"] = apiKey;
+
+            List<Balance> positions = new List<Balance>();
+
+            try
+            {
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            Sistem.Debug("API Response: " + jsonResponse); // Debug için
+
+                            if (SpotFutures.ToLower() == "spot")
+                            {
+                                // Spot parse
+                                var regex = new Regex(@"""asset""\s*:\s*""([^""]+)""\s*,\s*""free""\s*:\s*""([^""]+)""\s*,\s*""locked""\s*:\s*""([^""]+)""");
+                                var matches = regex.Matches(jsonResponse);
+
+                                foreach (Match match in matches)
+                                {
+                                    string asset = match.Groups[1].Value;
+                                    string freeStr = match.Groups[2].Value;
+                                    string lockedStr = match.Groups[3].Value;
+
+                                    decimal free = 0;
+                                    decimal locked = 0;
+                                    if (decimal.TryParse(freeStr, out free) && decimal.TryParse(lockedStr, out locked))
+                                    {
+                                        decimal total = free + locked;
+                                        if (total > 0)
+                                        {
+                                            positions.Add(new Balance
+                                            {
+                                                Asset = asset,
+                                                Free = freeStr,
+                                                Locked = lockedStr,
+                                                TotalAmount = total
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            else // Futures
+                            {
+                                // 1. Assets (Bakiyeler) - "assets" array içinde
+                                var assetsRegex = new Regex(@"""asset""\s*:\s*""([^""]+)""\s*,\s*""walletBalance""\s*:\s*""([^""]+)""\s*,\s*""unrealizedProfit""\s*:\s*""([^""]+)""");
+                                var assetsMatches = assetsRegex.Matches(jsonResponse);
+
+                                foreach (Match match in assetsMatches)
+                                {
+                                    string asset = match.Groups[1].Value;
+                                    string walletBalanceStr = match.Groups[2].Value;
+                                    string unrealizedProfitStr = match.Groups[3].Value;
+
+                                    decimal walletBalance = 0;
+                                    decimal unrealizedProfit = 0;
+
+                                    if (decimal.TryParse(walletBalanceStr, out walletBalance) &&
+                                        decimal.TryParse(unrealizedProfitStr, out unrealizedProfit))
+                                    {
+                                        decimal totalBalance = walletBalance + unrealizedProfit;
+
+                                        if (walletBalance > 0 || unrealizedProfit != 0)
+                                        {
+                                            positions.Add(new Balance
+                                            {
+                                                Asset = asset,
+                                                Free = walletBalanceStr,
+                                                Locked = unrealizedProfitStr,
+                                                TotalAmount = totalBalance
+                                            });
+                                        }
+                                    }
+                                }
+
+                                // 2. Positions (Açık Pozisyonlar) - "positions" array içinde
+                                var positionsRegex = new Regex(@"""symbol""\s*:\s*""([^""]+)""\s*,.*?""positionAmt""\s*:\s*""([^""]+)"".*?""unrealizedProfit""\s*:\s*""([^""]+)""");
+                                var positionsMatches = positionsRegex.Matches(jsonResponse);
+
+                                foreach (Match match in positionsMatches)
+                                {
+                                    string symbol = match.Groups[1].Value;
+                                    string positionAmtStr = match.Groups[2].Value;
+                                    string unrealizedProfitStr = match.Groups[3].Value;
+
+                                    decimal positionAmt = 0;
+
+                                    if (decimal.TryParse(positionAmtStr, out positionAmt) && positionAmt != 0)
+                                    {
+                                        positions.Add(new Balance
+                                        {
+                                            Asset = symbol,
+                                            Free = positionAmtStr,
+                                            Locked = unrealizedProfitStr,
+                                            TotalAmount = Math.Abs(positionAmt)
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Listeyi konsola yazdır
+                //Console.WriteLine(SpotFutures + " Pozisyon bilgileri alindi (Sembol - Miktar):");
+                //foreach (var pos in positions)
+                //{
+                //    Console.WriteLine("  - " + pos.Asset + ": " + pos.TotalAmount);
+                //}
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("API Error Response: " + errorText);
+                            }
+                        }
+                    }
+                }
+                Sistem.Debug("API hatasi: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("Parse hatasi: " + ex.Message);
+            }
+
+            return positions;
+        }
+        private string ComputeSignature(string queryString, string secretKey)
+        {
+            byte[] secretBytes = Encoding.UTF8.GetBytes(secretKey);
+            byte[] queryBytes = Encoding.UTF8.GetBytes(queryString);
+            HMACSHA256 hmac = new HMACSHA256(secretBytes);
+            byte[] hash = hmac.ComputeHash(queryBytes);
+            hmac.Dispose();
+            return BitConverter.ToString(hash).Replace("-", "").ToLower();
+        }
+        #endregion
+
         #region Performans
         public class PerformansMetrikleri
         {
@@ -1041,4 +1206,5 @@ namespace ideal
 
         #endregion
     }
+
 }
