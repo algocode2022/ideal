@@ -1,45 +1,85 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Data;
-using System.Net;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Data.OleDb;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Collections.Specialized;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
-using System.Linq;
 
 namespace ideal
 {
-
-
+    #region BinanceClass
+    public class OpenOrders
+    {
+        public string OrderId { get; set; }
+        public string Symbol { get; set; }
+        public string Price { get; set; }
+        public string OrigQty { get; set; }
+        public string ExecutedQty { get; set; }
+        public string Status { get; set; }
+        public string Type { get; set; }
+        public string Side { get; set; }
+        public string PositionSide { get; set; }  // Futures için
+        public string StopPrice { get; set; }     // Stop emirler için
+        public string Time { get; set; }
+    }
+    public class ClosedPositions
+    {
+        public string Symbol { get; set; }
+        public string PnL { get; set; }        // Kar/Zarar
+        public string Asset { get; set; }      // USDT, BUSD, vs
+        public string Time { get; set; }       // Unix timestamp
+        public string TranId { get; set; }
+        public string TradeId { get; set; }
+    }
+    public class OpenPositions
+    {
+        public string Symbol { get; set; }
+        public string PositionAmt { get; set; }          // Pozisyon miktarı
+        public string EntryPrice { get; set; }           // Giriş fiyatı
+        public string MarkPrice { get; set; }            // Güncel mark fiyatı
+        public string UnrealizedProfit { get; set; }     // Gerçekleşmemiş kar/zarar
+        public string LiquidationPrice { get; set; }     // Tasfiye fiyatı
+        public string Leverage { get; set; }             // Kaldıraç
+        public string MarginType { get; set; }           // ISOLATED veya CROSS
+        public string IsolatedMargin { get; set; }       // Isolated margin miktarı
+        public string PositionSide { get; set; }         // LONG, SHORT, BOTH
+        public string Notional { get; set; }             // Pozisyon değeri (USDT)
+        public string UpdateTime { get; set; }           // Son güncelleme zamanı
+    }
+    #endregion
     public class Lib
     {
+        #region Binance
         #region BinancePositions
         /// <summary>
-        /// Spot veya Futures pozisyonlarını alır ve parse eder.
+        /// Açık pozisyonları/bakiyeleri getirir (Spot ve Futures)
         /// </summary>
-        public List<Balance> GetPositions(dynamic Sistem, string apiKey, string secretKey, string SpotFutures)
+        public List<OpenPositions> OpenPositions(dynamic Sistem, string apiKey, string secretKey, string SpotFutures)
         {
             string baseUrl = SpotFutures.ToLower() == "spot" ? "https://api.binance.com" : "https://fapi.binance.com";
-            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/account" : "/fapi/v2/account";
+            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/account" : "/fapi/v2/positionRisk";
 
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             var queryString = "timestamp=" + timestamp;
             var signature = ComputeSignature(queryString, secretKey);
-
             var url = baseUrl + endpoint + "?" + queryString + "&signature=" + signature;
+
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "GET";
             request.Headers["X-MBX-APIKEY"] = apiKey;
 
-            List<Balance> positions = new List<Balance>();
+            List<OpenPositions> openPositions = new List<OpenPositions>();
 
             try
             {
@@ -50,11 +90,11 @@ namespace ideal
                         using (var reader = new StreamReader(stream))
                         {
                             var jsonResponse = reader.ReadToEnd();
-                            Sistem.Debug("API Response: " + jsonResponse); // Debug için
+                            //Sistem.Debug("[GetOpenPositions] API Response: " + jsonResponse);
 
                             if (SpotFutures.ToLower() == "spot")
                             {
-                                // Spot parse
+                                // SPOT - Balances parse et
                                 var regex = new Regex(@"""asset""\s*:\s*""([^""]+)""\s*,\s*""free""\s*:\s*""([^""]+)""\s*,\s*""locked""\s*:\s*""([^""]+)""");
                                 var matches = regex.Matches(jsonResponse);
 
@@ -66,17 +106,28 @@ namespace ideal
 
                                     decimal free = 0;
                                     decimal locked = 0;
-                                    if (decimal.TryParse(freeStr, out free) && decimal.TryParse(lockedStr, out locked))
+                                    if (decimal.TryParse(freeStr, System.Globalization.NumberStyles.Any,
+                                                       System.Globalization.CultureInfo.InvariantCulture, out free) &&
+                                        decimal.TryParse(lockedStr, System.Globalization.NumberStyles.Any,
+                                                       System.Globalization.CultureInfo.InvariantCulture, out locked))
                                     {
                                         decimal total = free + locked;
                                         if (total > 0)
                                         {
-                                            positions.Add(new Balance
+                                            openPositions.Add(new OpenPositions
                                             {
-                                                Asset = asset,
-                                                Free = freeStr,
-                                                Locked = lockedStr,
-                                                TotalAmount = total
+                                                Symbol = asset,
+                                                PositionAmt = total.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                                EntryPrice = "",                // Spot'ta yok
+                                                MarkPrice = "",                 // Spot'ta yok
+                                                UnrealizedProfit = "",          // Spot'ta yok
+                                                LiquidationPrice = "",          // Spot'ta yok
+                                                Leverage = "1",                 // Spot her zaman 1x
+                                                MarginType = "SPOT",            // Spot için özel
+                                                IsolatedMargin = "",            // Spot'ta yok
+                                                PositionSide = "BOTH",          // Spot için default
+                                                Notional = "",                  // Spot'ta yok
+                                                UpdateTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString()
                                             });
                                         }
                                     }
@@ -84,57 +135,590 @@ namespace ideal
                             }
                             else // Futures
                             {
-                                // 1. Assets (Bakiyeler) - "assets" array içinde
-                                var assetsRegex = new Regex(@"""asset""\s*:\s*""([^""]+)""\s*,\s*""walletBalance""\s*:\s*""([^""]+)""\s*,\s*""unrealizedProfit""\s*:\s*""([^""]+)""");
-                                var assetsMatches = assetsRegex.Matches(jsonResponse);
+                                // FUTURES - Position parse et
+                                var objectMatches = Regex.Matches(jsonResponse, @"\{[^\{\}]*(?:\{[^\{\}]*\}[^\{\}]*)*\}");
 
-                                foreach (Match match in assetsMatches)
+                                foreach (Match objMatch in objectMatches)
                                 {
-                                    string asset = match.Groups[1].Value;
-                                    string walletBalanceStr = match.Groups[2].Value;
-                                    string unrealizedProfitStr = match.Groups[3].Value;
+                                    string posJson = objMatch.Value;
 
-                                    decimal walletBalance = 0;
-                                    decimal unrealizedProfit = 0;
+                                    var symbolMatch = Regex.Match(posJson, @"""symbol""\s*:\s*""([^""]+)""");
+                                    var positionAmtMatch = Regex.Match(posJson, @"""positionAmt""\s*:\s*""([^""]+)""");
+                                    var entryPriceMatch = Regex.Match(posJson, @"""entryPrice""\s*:\s*""([^""]+)""");
+                                    var markPriceMatch = Regex.Match(posJson, @"""markPrice""\s*:\s*""([^""]+)""");
+                                    var unRealizedProfitMatch = Regex.Match(posJson, @"""unRealizedProfit""\s*:\s*""([^""]+)""");
+                                    var liquidationPriceMatch = Regex.Match(posJson, @"""liquidationPrice""\s*:\s*""([^""]+)""");
+                                    var leverageMatch = Regex.Match(posJson, @"""leverage""\s*:\s*""([^""]+)""");
+                                    var marginTypeMatch = Regex.Match(posJson, @"""marginType""\s*:\s*""([^""]+)""");
+                                    var isolatedMarginMatch = Regex.Match(posJson, @"""isolatedMargin""\s*:\s*""([^""]+)""");
+                                    var positionSideMatch = Regex.Match(posJson, @"""positionSide""\s*:\s*""([^""]+)""");
+                                    var notionalMatch = Regex.Match(posJson, @"""notional""\s*:\s*""([^""]+)""");
+                                    var updateTimeMatch = Regex.Match(posJson, @"""updateTime""\s*:\s*(\d+)");
 
-                                    if (decimal.TryParse(walletBalanceStr, out walletBalance) &&
-                                        decimal.TryParse(unrealizedProfitStr, out unrealizedProfit))
+                                    if (symbolMatch.Success && positionAmtMatch.Success)
                                     {
-                                        decimal totalBalance = walletBalance + unrealizedProfit;
+                                        decimal posAmt = 0;
+                                        decimal.TryParse(positionAmtMatch.Groups[1].Value,
+                                                       System.Globalization.NumberStyles.Any,
+                                                       System.Globalization.CultureInfo.InvariantCulture,
+                                                       out posAmt);
 
-                                        if (walletBalance > 0 || unrealizedProfit != 0)
+                                        if (posAmt != 0)  // Sadece açık pozisyonlar
                                         {
-                                            positions.Add(new Balance
+                                            openPositions.Add(new OpenPositions
                                             {
-                                                Asset = asset,
-                                                Free = walletBalanceStr,
-                                                Locked = unrealizedProfitStr,
-                                                TotalAmount = totalBalance
+                                                Symbol = symbolMatch.Groups[1].Value,
+                                                PositionAmt = positionAmtMatch.Groups[1].Value,
+                                                EntryPrice = entryPriceMatch.Success ? entryPriceMatch.Groups[1].Value : "",
+                                                MarkPrice = markPriceMatch.Success ? markPriceMatch.Groups[1].Value : "",
+                                                UnrealizedProfit = unRealizedProfitMatch.Success ? unRealizedProfitMatch.Groups[1].Value : "",
+                                                LiquidationPrice = liquidationPriceMatch.Success ? liquidationPriceMatch.Groups[1].Value : "",
+                                                Leverage = leverageMatch.Success ? leverageMatch.Groups[1].Value : "",
+                                                MarginType = marginTypeMatch.Success ? marginTypeMatch.Groups[1].Value : "",
+                                                IsolatedMargin = isolatedMarginMatch.Success ? isolatedMarginMatch.Groups[1].Value : "",
+                                                PositionSide = positionSideMatch.Success ? positionSideMatch.Groups[1].Value : "",
+                                                Notional = notionalMatch.Success ? notionalMatch.Groups[1].Value : "",
+                                                UpdateTime = updateTimeMatch.Success ? updateTimeMatch.Groups[1].Value : ""
                                             });
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
 
-                                // 2. Positions (Açık Pozisyonlar) - "positions" array içinde
-                                var positionsRegex = new Regex(@"""symbol""\s*:\s*""([^""]+)""\s*,.*?""positionAmt""\s*:\s*""([^""]+)"".*?""unrealizedProfit""\s*:\s*""([^""]+)""");
-                                var positionsMatches = positionsRegex.Matches(jsonResponse);
+                // Konsol çıktısı
+                //Sistem.Debug("========================================");
+                //Sistem.Debug("[GetOpenPositions] " + SpotFutures.ToUpper() + " - Toplam: " + openPositions.Count);
+                //Sistem.Debug("========================================");
 
-                                foreach (Match match in positionsMatches)
+                //int counter = 1;
+                //foreach (var pos in openPositions)
+                //{
+                //    Sistem.Debug("--- #" + counter + " ---");
+                //    Sistem.Debug("  Symbol: " + pos.Symbol);
+                //    Sistem.Debug("  Amount: " + pos.PositionAmt);
+
+                //    if (!string.IsNullOrEmpty(pos.EntryPrice))
+                //        Sistem.Debug("  Entry Price: " + pos.EntryPrice);
+
+                //    if (!string.IsNullOrEmpty(pos.MarkPrice))
+                //        Sistem.Debug("  Mark Price: " + pos.MarkPrice);
+
+                //    if (!string.IsNullOrEmpty(pos.UnrealizedProfit))
+                //        Sistem.Debug("  Unrealized PnL: " + pos.UnrealizedProfit);
+
+                //    if (!string.IsNullOrEmpty(pos.Leverage))
+                //        Sistem.Debug("  Leverage: " + pos.Leverage + "x");
+
+                //    if (!string.IsNullOrEmpty(pos.MarginType))
+                //        Sistem.Debug("  Margin Type: " + pos.MarginType);
+
+                //    counter++;
+                //}
+                //Sistem.Debug("========================================");
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("[GetOpenPositions] API Error: " + errorText);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[GetOpenPositions] Parse hatası: " + ex.Message);
+            }
+
+            return openPositions;
+        }
+        private string ComputeSignature(string queryString, string secretKey)
+        {
+            byte[] secretBytes = Encoding.UTF8.GetBytes(secretKey);
+            byte[] queryBytes = Encoding.UTF8.GetBytes(queryString);
+            HMACSHA256 hmac = new HMACSHA256(secretBytes);
+            byte[] hash = hmac.ComputeHash(queryBytes);
+            hmac.Dispose();
+            return BitConverter.ToString(hash).Replace("-", "").ToLower();
+        }
+        #endregion
+        #region BinanceSendOrder
+        /// <summary>
+        /// Spot veya Futures için emir gönderir
+        /// </summary>
+        /// <param name="Sistem">Sistem objesi (Debug için)</param>
+        /// <param name="apiKey">API Key</param>
+        /// <param name="secretKey">Secret Key</param>
+        /// <param name="SpotFutures">"spot" veya "futures"</param>
+        /// <param name="symbol">İşlem çifti (örn: BTCUSDT)</param>
+        /// <param name="side">BUY veya SELL</param>
+        /// <param name="orderType">MARKET, LIMIT, STOP_LOSS, STOP_LOSS_LIMIT, TAKE_PROFIT, TAKE_PROFIT_LIMIT</param>
+        /// <param name="quantity">Miktar</param>
+        /// <param name="price">Fiyat (LIMIT emirlerde zorunlu)</param>
+        /// <param name="stopPrice">Stop fiyatı (STOP emirlerde zorunlu)</param>
+        /// <param name="timeInForce">GTC, IOC, FOK (LIMIT emirlerde, varsayılan: GTC)</param>
+        /// <param name="positionSide">Futures için: BOTH, LONG, SHORT (varsayılan: BOTH)</param>
+        /// <param name="reduceOnly">Futures için: Sadece pozisyon kapatma (varsayılan: false)</param>
+        /// <returns>Emir ID'si veya hata durumunda boş string</returns>
+        public string SendOrder(dynamic Sistem, string apiKey, string secretKey, string SpotFutures, string symbol, string side, string orderType = "MARKET", decimal quantity = 0,
+            decimal price = 0, decimal stopPrice = 0, string timeInForce = "GTC", string positionSide = "BOTH", bool reduceOnly = false, string clientOrderId = "iDeal_")
+        {
+            string baseUrl = SpotFutures.ToLower() == "spot" ? "https://api.binance.com" : "https://fapi.binance.com";
+            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/order" : "/fapi/v1/order";
+
+            // Timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            // Query string oluştur
+            var queryParams = new Dictionary<string, string>();
+            queryParams.Add("symbol", symbol.ToUpper());
+            queryParams.Add("side", side.ToUpper());
+            queryParams.Add("type", orderType.ToUpper());
+            queryParams.Add("timestamp", timestamp);
+
+            // Quantity ekle
+            if (quantity > 0)
+            {
+                queryParams.Add("quantity", quantity.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            // Price ekle (LIMIT emirlerde)
+            if (price > 0 && (orderType.ToUpper().Contains("LIMIT") || orderType.ToUpper() == "STOP_LOSS_LIMIT" || orderType.ToUpper() == "TAKE_PROFIT_LIMIT"))
+            {
+                queryParams.Add("price", price.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            // Stop Price ekle (STOP emirlerde)
+            if (stopPrice > 0 && (orderType.ToUpper().Contains("STOP") || orderType.ToUpper().Contains("TAKE_PROFIT")))
+            {
+                queryParams.Add("stopPrice", stopPrice.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            // Time in Force ekle (LIMIT emirlerde)
+            if (orderType.ToUpper().Contains("LIMIT"))
+            {
+                queryParams.Add("timeInForce", timeInForce.ToUpper());
+            }
+
+            // Futures için özel parametreler
+            if (SpotFutures.ToLower() == "futures")
+            {
+                queryParams.Add("positionSide", positionSide.ToUpper());
+
+                if (reduceOnly)
+                {
+                    queryParams.Add("reduceOnly", "true");
+                }
+            }
+            // Client Order
+            if (!string.IsNullOrEmpty(clientOrderId))
+            {
+                queryParams.Add("newClientOrderId", clientOrderId + timestamp);
+            }
+
+            //queryParams.Add("timestamp", timestamp);
+            // Query string oluştur (eski C# versiyonu için)
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            // Signature hesapla
+            var signature = ComputeSignature(queryString, secretKey);
+            queryString += "&signature=" + signature;
+
+            // URL oluştur
+            var url = baseUrl + endpoint + "?" + queryString;
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.Headers["X-MBX-APIKEY"] = apiKey;
+
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            //Sistem.Debug("[" + SpotFutures.ToUpper() + "] Emir başarılı: " + jsonResponse);
+
+                            // Order ID'yi çıkar
+                            var orderIdMatch = Regex.Match(jsonResponse, @"""orderId""\s*:\s*(\d+)");
+                            if (orderIdMatch.Success)
+                            {
+                                string orderId = orderIdMatch.Groups[1].Value;
+                                //Sistem.Debug("Order ID: " + orderId);
+                                return orderId;
+                            }
+
+                            return jsonResponse;
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("[" + SpotFutures.ToUpper() + "] API Error: " + errorText);
+                            }
+                        }
+                    }
+                }
+                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Emir hatası: " + ex.Message);
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Genel hata: " + ex.Message);
+                return string.Empty;
+            }
+        }
+        #endregion
+        #region BinanceSetLeverage
+        /// <summary>
+        /// Futures için kaldıraç ayarlar (Leverage)
+        /// </summary>
+        /// <param name="Sistem">Sistem objesi</param>
+        /// <param name="apiKey">API Key</param>
+        /// <param name="secretKey">Secret Key</param>
+        /// <param name="symbol">İşlem çifti (örn: BTCUSDT)</param>
+        /// <param name="leverage">Kaldıraç (1-125 arası)</param>
+        /// <returns>Başarılı ise true, değilse false</returns>
+        public bool SetLeverage(dynamic Sistem, string apiKey, string secretKey, string symbol, int leverage)
+        {
+            string baseUrl = "https://fapi.binance.com";
+            string endpoint = "/fapi/v1/leverage";
+
+            // Leverage kontrolü
+            if (leverage < 1 || leverage > 125)
+            {
+                Sistem.Debug("Kaldıraç 1-125 arasında olmalı! Girilen: " + leverage);
+                return false;
+            }
+
+            // Timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            // Query parameters
+            var queryParams = new Dictionary<string, string>();
+            queryParams.Add("symbol", symbol.ToUpper());
+            queryParams.Add("leverage", leverage.ToString());
+            queryParams.Add("timestamp", timestamp);
+
+            // Query string oluştur
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            // Signature
+            var signature = ComputeSignature(queryString, secretKey);
+            queryString += "&signature=" + signature;
+
+            // URL
+            var url = baseUrl + endpoint + "?" + queryString;
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.Headers["X-MBX-APIKEY"] = apiKey;
+
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            Sistem.Debug("[FUTURES] Kaldıraç ayarlandı (" + symbol + " = " + leverage + "x): " + jsonResponse);
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("[FUTURES] Kaldıraç hatası: " + errorText);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[FUTURES] Kaldıraç genel hata: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Margin tipini ayarlar (ISOLATED veya CROSS)
+        /// </summary>
+        /// <param name="Sistem">Sistem objesi</param>
+        /// <param name="apiKey">API Key</param>
+        /// <param name="secretKey">Secret Key</param>
+        /// <param name="symbol">İşlem çifti</param>
+        /// <param name="marginType">ISOLATED veya CROSS</param>
+        /// <returns>Başarılı ise true</returns>
+        public bool SetMarginType(dynamic Sistem, string apiKey, string secretKey, string symbol, string marginType)
+        {
+            string baseUrl = "https://fapi.binance.com";
+            string endpoint = "/fapi/v1/marginType";
+
+            // Margin type kontrolü
+            marginType = marginType.ToUpper();
+            if (marginType != "ISOLATED" && marginType != "CROSS")
+            {
+                Sistem.Debug("Margin tipi ISOLATED veya CROSS olmalı!");
+                return false;
+            }
+
+            // Timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            // Query parameters
+            var queryParams = new Dictionary<string, string>();
+            queryParams.Add("symbol", symbol.ToUpper());
+            queryParams.Add("marginType", marginType);
+            queryParams.Add("timestamp", timestamp);
+
+            // Query string oluştur
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            // Signature
+            var signature = ComputeSignature(queryString, secretKey);
+            queryString += "&signature=" + signature;
+
+            // URL
+            var url = baseUrl + endpoint + "?" + queryString;
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.Headers["X-MBX-APIKEY"] = apiKey;
+
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            Sistem.Debug("[FUTURES] Margin tipi ayarlandı (" + symbol + " = " + marginType + "): " + jsonResponse);
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+
+                                // Eğer zaten bu margin type'daysa hata olarak gösterme
+                                if (errorText.Contains("-4046") || errorText.Contains("No need to change margin type"))
                                 {
-                                    string symbol = match.Groups[1].Value;
-                                    string positionAmtStr = match.Groups[2].Value;
-                                    string unrealizedProfitStr = match.Groups[3].Value;
+                                    Sistem.Debug("[FUTURES] Margin tipi zaten " + marginType);
+                                    return true;
+                                }
 
-                                    decimal positionAmt = 0;
+                                Sistem.Debug("[FUTURES] Margin tipi hatası: " + errorText);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[FUTURES] Margin tipi genel hata: " + ex.Message);
+                return false;
+            }
+        }
+        #endregion
+        #region BinanceOpenOrders
+        /// <summary>
+        /// Bekleyen emirleri (Open Orders) alır
+        /// </summary>
+        /// <param name="Sistem">Sistem objesi</param>
+        /// <param name="apiKey">API Key</param>
+        /// <param name="secretKey">Secret Key</param>
+        /// <param name="SpotFutures">"spot" veya "futures"</param>
+        /// <param name="symbol">Belirli bir sembol için (opsiyonel, boş ise tümü)</param>
+        /// <returns>Bekleyen emirlerin listesi</returns>
+        public List<OpenOrders> OpenOrders(dynamic Sistem, string apiKey, string secretKey, string SpotFutures, string symbol = "")
+        {
+            string baseUrl = SpotFutures.ToLower() == "spot" ? "https://api.binance.com" : "https://fapi.binance.com";
+            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/openOrders" : "/fapi/v1/openOrders";
 
-                                    if (decimal.TryParse(positionAmtStr, out positionAmt) && positionAmt != 0)
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            // Query string oluştur
+            var queryParams = new Dictionary<string, string>();
+
+            // Belirli bir sembol isteniyorsa ekle
+            if (!string.IsNullOrEmpty(symbol))
+            {
+                queryParams.Add("symbol", symbol.ToUpper());
+            }
+
+            queryParams.Add("timestamp", timestamp);
+
+            // Query string oluştur
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            var signature = ComputeSignature(queryString, secretKey);
+            var url = baseUrl + endpoint + "?" + queryString + "&signature=" + signature;
+
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
+            request.Headers["X-MBX-APIKEY"] = apiKey;
+
+            List<OpenOrders> openOrders = new List<OpenOrders>();
+
+            try
+            {
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            //Sistem.Debug("[" + SpotFutures.ToUpper() + "] Open Orders Response: " + jsonResponse);
+
+                            if (SpotFutures.ToLower() == "spot")
+                            {
+                                // Spot open orders parse
+                                // Her order objesini ayır
+                                var objectMatches = Regex.Matches(jsonResponse, @"\{[^\{\}]*(?:\{[^\{\}]*\}[^\{\}]*)*\}");
+
+                                foreach (Match objMatch in objectMatches)
+                                {
+                                    string orderJson = objMatch.Value;
+
+                                    // Her field'i ayrı parse et
+                                    var orderIdMatch = Regex.Match(orderJson, @"""orderId""\s*:\s*(\d+)");
+                                    var symbolMatch = Regex.Match(orderJson, @"""symbol""\s*:\s*""([^""]+)""");
+                                    var priceMatch = Regex.Match(orderJson, @"""price""\s*:\s*""([^""]+)""");
+                                    var origQtyMatch = Regex.Match(orderJson, @"""origQty""\s*:\s*""([^""]+)""");
+                                    var executedQtyMatch = Regex.Match(orderJson, @"""executedQty""\s*:\s*""([^""]+)""");
+                                    var statusMatch = Regex.Match(orderJson, @"""status""\s*:\s*""([^""]+)""");
+                                    var typeMatch = Regex.Match(orderJson, @"""type""\s*:\s*""([^""]+)""");
+                                    var sideMatch = Regex.Match(orderJson, @"""side""\s*:\s*""([^""]+)""");
+                                    var timeMatch = Regex.Match(orderJson, @"""time""\s*:\s*(\d+)");
+
+                                    if (orderIdMatch.Success)
                                     {
-                                        positions.Add(new Balance
+                                        openOrders.Add(new OpenOrders
                                         {
-                                            Asset = symbol,
-                                            Free = positionAmtStr,
-                                            Locked = unrealizedProfitStr,
-                                            TotalAmount = Math.Abs(positionAmt)
+                                            OrderId = orderIdMatch.Groups[1].Value,
+                                            Symbol = symbolMatch.Success ? symbolMatch.Groups[1].Value : "",
+                                            Price = priceMatch.Success ? priceMatch.Groups[1].Value : "0",
+                                            OrigQty = origQtyMatch.Success ? origQtyMatch.Groups[1].Value : "0",
+                                            ExecutedQty = executedQtyMatch.Success ? executedQtyMatch.Groups[1].Value : "0",
+                                            Status = statusMatch.Success ? statusMatch.Groups[1].Value : "",
+                                            Type = typeMatch.Success ? typeMatch.Groups[1].Value : "",
+                                            Side = sideMatch.Success ? sideMatch.Groups[1].Value : "",
+                                            Time = timeMatch.Success ? timeMatch.Groups[1].Value : "0",
+                                            PositionSide = "",
+                                            StopPrice = ""
+                                        });
+                                    }
+                                }
+                            }
+                            else // Futures
+                            {
+                                // Her order objesini ayır
+                                var objectMatches = Regex.Matches(jsonResponse, @"\{[^\{\}]*(?:\{[^\{\}]*\}[^\{\}]*)*\}");
+
+                                foreach (Match objMatch in objectMatches)
+                                {
+                                    string orderJson = objMatch.Value;
+
+                                    // Her field'i ayrı parse et
+                                    var orderIdMatch = Regex.Match(orderJson, @"""orderId""\s*:\s*(\d+)");
+                                    var symbolMatch = Regex.Match(orderJson, @"""symbol""\s*:\s*""([^""]+)""");
+                                    var priceMatch = Regex.Match(orderJson, @"""price""\s*:\s*""([^""]+)""");
+                                    var origQtyMatch = Regex.Match(orderJson, @"""origQty""\s*:\s*""([^""]+)""");
+                                    var executedQtyMatch = Regex.Match(orderJson, @"""executedQty""\s*:\s*""([^""]+)""");
+                                    var statusMatch = Regex.Match(orderJson, @"""status""\s*:\s*""([^""]+)""");
+                                    var typeMatch = Regex.Match(orderJson, @"""type""\s*:\s*""([^""]+)""");
+                                    var sideMatch = Regex.Match(orderJson, @"""side""\s*:\s*""([^""]+)""");
+                                    var positionSideMatch = Regex.Match(orderJson, @"""positionSide""\s*:\s*""([^""]+)""");
+                                    var stopPriceMatch = Regex.Match(orderJson, @"""stopPrice""\s*:\s*""([^""]+)""");
+                                    var timeMatch = Regex.Match(orderJson, @"""time""\s*:\s*(\d+)");
+
+                                    if (orderIdMatch.Success)
+                                    {
+                                        openOrders.Add(new OpenOrders
+                                        {
+                                            OrderId = orderIdMatch.Groups[1].Value,
+                                            Symbol = symbolMatch.Success ? symbolMatch.Groups[1].Value : "",
+                                            Price = priceMatch.Success ? priceMatch.Groups[1].Value : "0",
+                                            OrigQty = origQtyMatch.Success ? origQtyMatch.Groups[1].Value : "0",
+                                            ExecutedQty = executedQtyMatch.Success ? executedQtyMatch.Groups[1].Value : "0",
+                                            Status = statusMatch.Success ? statusMatch.Groups[1].Value : "",
+                                            Type = typeMatch.Success ? typeMatch.Groups[1].Value : "",
+                                            Side = sideMatch.Success ? sideMatch.Groups[1].Value : "",
+                                            PositionSide = positionSideMatch.Success ? positionSideMatch.Groups[1].Value : "BOTH",
+                                            StopPrice = stopPriceMatch.Success ? stopPriceMatch.Groups[1].Value : "0",
+                                            Time = timeMatch.Success ? timeMatch.Groups[1].Value : "0"
                                         });
                                     }
                                 }
@@ -143,11 +727,13 @@ namespace ideal
                     }
                 }
 
-                // Listeyi konsola yazdır
-                //Console.WriteLine(SpotFutures + " Pozisyon bilgileri alindi (Sembol - Miktar):");
-                //foreach (var pos in positions)
+                // Konsola yazdır
+                //Sistem.Debug(SpotFutures.ToUpper() + " - Toplam bekleyen emir: " + openOrders.Count);
+                //foreach (var order in openOrders)
                 //{
-                //    Console.WriteLine("  - " + pos.Asset + ": " + pos.TotalAmount);
+                //    Sistem.Debug("  - OrderID: " + order.OrderId + " | " + order.Symbol +
+                //                " | " + order.Side + " | " + order.Type +
+                //                " | Qty: " + order.OrigQty + " | Price: " + order.Price);
                 //}
             }
             catch (WebException ex)
@@ -161,31 +747,288 @@ namespace ideal
                             using (var errorReader = new StreamReader(errorStream))
                             {
                                 string errorText = errorReader.ReadToEnd();
-                                Sistem.Debug("API Error Response: " + errorText);
+                                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Open Orders Error: " + errorText);
                             }
                         }
                     }
                 }
-                Sistem.Debug("API hatasi: " + ex.Message);
+                Sistem.Debug("[" + SpotFutures.ToUpper() + "] API hatası: " + ex.Message);
             }
             catch (Exception ex)
             {
-                Sistem.Debug("Parse hatasi: " + ex.Message);
+                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Parse hatası: " + ex.Message);
             }
 
-            return positions;
+            return openOrders;
         }
-        private string ComputeSignature(string queryString, string secretKey)
+        /// <summary>
+        /// Belirli bir emri iptal eder
+        /// </summary>
+        public bool CancelOrder(dynamic Sistem, string apiKey, string secretKey, string SpotFutures, string symbol, string orderId)
         {
-            byte[] secretBytes = Encoding.UTF8.GetBytes(secretKey);
-            byte[] queryBytes = Encoding.UTF8.GetBytes(queryString);
-            HMACSHA256 hmac = new HMACSHA256(secretBytes);
-            byte[] hash = hmac.ComputeHash(queryBytes);
-            hmac.Dispose();
-            return BitConverter.ToString(hash).Replace("-", "").ToLower();
+            string baseUrl = SpotFutures.ToLower() == "spot" ? "https://api.binance.com" : "https://fapi.binance.com";
+            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/order" : "/fapi/v1/order";
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            var queryParams = new Dictionary<string, string>();
+            queryParams.Add("symbol", symbol.ToUpper());
+            queryParams.Add("orderId", orderId);
+            queryParams.Add("timestamp", timestamp);
+
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            var signature = ComputeSignature(queryString, secretKey);
+            queryString += "&signature=" + signature;
+
+            var url = baseUrl + endpoint + "?" + queryString;
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "DELETE";
+                request.Headers["X-MBX-APIKEY"] = apiKey;
+
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            Sistem.Debug("[" + SpotFutures.ToUpper() + "] Emir iptal edildi: " + jsonResponse);
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Cancel Error: " + errorText);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Cancel genel hata: " + ex.Message);
+                return false;
+            }
+        }
+        /// <summary>
+        /// Tüm bekleyen emirleri iptal eder
+        /// </summary>
+        public bool CancelAllOrders(dynamic Sistem, string apiKey, string secretKey, string SpotFutures, string symbol)
+        {
+            string baseUrl = SpotFutures.ToLower() == "spot" ? "https://api.binance.com" : "https://fapi.binance.com";
+            string endpoint = SpotFutures.ToLower() == "spot" ? "/api/v3/openOrders" : "/fapi/v1/allOpenOrders";
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            var queryParams = new Dictionary<string, string>();
+            queryParams.Add("symbol", symbol.ToUpper());
+            queryParams.Add("timestamp", timestamp);
+
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            var signature = ComputeSignature(queryString, secretKey);
+            queryString += "&signature=" + signature;
+
+            var url = baseUrl + endpoint + "?" + queryString;
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "DELETE";
+                request.Headers["X-MBX-APIKEY"] = apiKey;
+
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            Sistem.Debug("[" + SpotFutures.ToUpper() + "] Tüm emirler iptal edildi (" + symbol + "): " + jsonResponse);
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Cancel All Error: " + errorText);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[" + SpotFutures.ToUpper() + "] Cancel All genel hata: " + ex.Message);
+                return false;
+            }
         }
         #endregion
+        #region BinanceClosedPositions
+        /// <summary>
+        /// Kapatılmış pozisyonları PnL ile getirir (sadece Futures)
+        /// </summary>
+        public List<ClosedPositions> ClosedPositions(dynamic Sistem, string apiKey, string secretKey, string symbol = "", int limit = 100)
+        {
+            string baseUrl = "https://fapi.binance.com";
+            string endpoint = "/fapi/v1/income";
 
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            var queryParams = new Dictionary<string, string>();
+
+            if (!string.IsNullOrEmpty(symbol))
+            {
+                queryParams.Add("symbol", symbol.ToUpper());
+            }
+
+            queryParams.Add("incomeType", "REALIZED_PNL");  // Sadece kapatılmış pozisyonlar
+            queryParams.Add("limit", limit.ToString());
+            queryParams.Add("timestamp", timestamp);
+
+            var queryList = new List<string>();
+            foreach (var kvp in queryParams)
+            {
+                queryList.Add(kvp.Key + "=" + kvp.Value);
+            }
+            var queryString = string.Join("&", queryList.ToArray());
+
+            var signature = ComputeSignature(queryString, secretKey);
+            var url = baseUrl + endpoint + "?" + queryString + "&signature=" + signature;
+
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
+            request.Headers["X-MBX-APIKEY"] = apiKey;
+
+            List<ClosedPositions> closedPositions = new List<ClosedPositions>();
+
+            try
+            {
+                using (var response = request.GetResponse())
+                {
+                    using (var stream = response.GetResponseStream())
+                    {
+                        using (var reader = new StreamReader(stream))
+                        {
+                            var jsonResponse = reader.ReadToEnd();
+                            //Sistem.Debug("[FUTURES] Closed Positions Response: " + jsonResponse);
+
+                            // Her objeyi ayır
+                            var objectMatches = Regex.Matches(jsonResponse, @"\{[^\{\}]*(?:\{[^\{\}]*\}[^\{\}]*)*\}");
+
+                            foreach (Match objMatch in objectMatches)
+                            {
+                                string posJson = objMatch.Value;
+
+                                var symbolMatch = Regex.Match(posJson, @"""symbol""\s*:\s*""([^""]+)""");
+                                var incomeMatch = Regex.Match(posJson, @"""income""\s*:\s*""([^""]+)""");
+                                var assetMatch = Regex.Match(posJson, @"""asset""\s*:\s*""([^""]+)""");
+                                var timeMatch = Regex.Match(posJson, @"""time""\s*:\s*(\d+)");
+                                var tranIdMatch = Regex.Match(posJson, @"""tranId""\s*:\s*(\d+)");
+                                var tradeIdMatch = Regex.Match(posJson, @"""tradeId""\s*:\s*""([^""]+)""");
+
+                                if (symbolMatch.Success && incomeMatch.Success)
+                                {
+                                    closedPositions.Add(new ClosedPositions
+                                    {
+                                        Symbol = symbolMatch.Groups[1].Value,
+                                        PnL = incomeMatch.Groups[1].Value,
+                                        Asset = assetMatch.Success ? assetMatch.Groups[1].Value : "USDT",
+                                        Time = timeMatch.Success ? timeMatch.Groups[1].Value : "0",
+                                        TranId = tranIdMatch.Success ? tranIdMatch.Groups[1].Value : "",
+                                        TradeId = tradeIdMatch.Success ? tradeIdMatch.Groups[1].Value : ""
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Konsol çıktısı
+                //Sistem.Debug("========================================");
+                //Sistem.Debug("Kapatılmış Pozisyonlar: " + closedPositions.Count);
+                //Sistem.Debug("========================================");
+
+                //decimal totalPnL = 0;
+                //foreach (var pos in closedPositions)
+                //{
+                //    decimal pnl = 0;
+                //    decimal.TryParse(pos.PnL, System.Globalization.NumberStyles.Any,
+                //                   System.Globalization.CultureInfo.InvariantCulture, out pnl);
+                //    totalPnL += pnl;
+
+                //    string pnlColor = pnl >= 0 ? "PROFIT" : "LOSS";
+                //    Sistem.Debug(pos.Symbol + " | PnL: " + pos.PnL + " " + pos.Asset +
+                //                " (" + pnlColor + ") | Time: " + pos.Time);
+                //}
+
+                //Sistem.Debug("========================================");
+                //Sistem.Debug("TOPLAM PnL: " + totalPnL + " USDT");
+                //Sistem.Debug("========================================");
+            }
+            catch (WebException ex)
+            {
+                using (var errorResponse = ex.Response)
+                {
+                    if (errorResponse != null)
+                    {
+                        using (var errorStream = errorResponse.GetResponseStream())
+                        {
+                            using (var errorReader = new StreamReader(errorStream))
+                            {
+                                string errorText = errorReader.ReadToEnd();
+                                Sistem.Debug("[FUTURES] Closed Positions Error: " + errorText);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Sistem.Debug("[FUTURES] Parse hatası: " + ex.Message);
+            }
+
+            return closedPositions;
+        }
+        #endregion
+        #endregion
         #region Performans
         public class PerformansMetrikleri
         {
@@ -1206,5 +2049,4 @@ namespace ideal
 
         #endregion
     }
-
 }
